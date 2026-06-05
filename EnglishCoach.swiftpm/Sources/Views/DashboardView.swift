@@ -173,22 +173,22 @@ public struct DashboardView: View {
                     color: .green
                 )
                 
-                // Stat 3: Errors to review
+                // Stat 3: Review Due
                 statBox(
-                    title: "Need Review",
-                    value: "\(stats.errorWords)",
-                    subTitle: "unresolved mistakes",
-                    iconName: "exclamationmark.triangle.fill",
-                    color: stats.errorWords > 0 ? .orange : .secondary
+                    title: "Review Due",
+                    value: "\(stats.reviewDueCount)",
+                    subTitle: "due today (SM-2)",
+                    iconName: "calendar.badge.clock",
+                    color: stats.reviewDueCount > 0 ? .orange : .secondary
                 )
                 
-                // Stat 4: Streak/Progress
+                // Stat 4: All Mistakes
                 statBox(
-                    title: "Daily Goal",
-                    value: todayProgress >= 1.0 ? "Done" : "Pending",
-                    subTitle: "20 words daily target",
-                    iconName: todayProgress >= 1.0 ? "checkmark.seal.fill" : "clock.fill",
-                    color: todayProgress >= 1.0 ? .purple : .secondary
+                    title: "All Mistakes",
+                    value: "\(stats.errorWords)",
+                    subTitle: "wrong answers list",
+                    iconName: "exclamationmark.triangle.fill",
+                    color: stats.errorWords > 0 ? .red : .secondary
                 )
             }
             .padding(.horizontal, 24)
@@ -265,31 +265,32 @@ public struct DashboardView: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            // Error Review Action
+            // Spaced Repetition & Error Review Action
             Button(action: { showReviewFlow = true }) {
                 HStack(spacing: 16) {
                     ZStack {
                         Circle()
                             .fill(Color.orange.opacity(0.1))
                             .frame(width: 44, height: 44)
-                        Image(systemName: "exclamationmark.triangle")
+                        Image(systemName: "calendar.badge.clock")
                             .font(.system(size: 18))
                             .foregroundColor(.orange)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Review Mistakes")
+                        Text("Smart Review Center")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
-                        Text("Practice words that you got wrong in quizzes")
+                        Text("Review scheduled words and correct mistakes")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
                     
                     Spacer()
                     
-                    if stats.errorWords > 0 {
-                        Text("\(stats.errorWords)")
+                    let totalReview = stats.reviewDueCount + stats.errorWords
+                    if totalReview > 0 {
+                        Text("\(totalReview)")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)

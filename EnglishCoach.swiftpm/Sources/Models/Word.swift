@@ -12,6 +12,12 @@ public struct Word: Identifiable, Codable, Hashable {
     public var correctCount: Int
     public var wrongCount: Int
     
+    // SM-2 Spaced Repetition Fields
+    public var easinessFactor: Double
+    public var intervalDays: Int
+    public var repetitionCount: Int
+    public var nextReviewDate: String?
+    
     public init(
         id: Int,
         word: String,
@@ -22,7 +28,11 @@ public struct Word: Identifiable, Codable, Hashable {
         learned: Bool = false,
         learnedDate: String? = nil,
         correctCount: Int = 0,
-        wrongCount: Int = 0
+        wrongCount: Int = 0,
+        easinessFactor: Double = 2.5,
+        intervalDays: Int = 0,
+        repetitionCount: Int = 0,
+        nextReviewDate: String? = nil
     ) {
         self.id = id
         self.word = word
@@ -34,5 +44,9 @@ public struct Word: Identifiable, Codable, Hashable {
         self.learnedDate = learnedDate
         self.correctCount = correctCount
         self.wrongCount = wrongCount
+        self.easinessFactor = easinessFactor
+        self.intervalDays = intervalDays
+        self.repetitionCount = repetitionCount
+        self.nextReviewDate = nextReviewDate
     }
 }

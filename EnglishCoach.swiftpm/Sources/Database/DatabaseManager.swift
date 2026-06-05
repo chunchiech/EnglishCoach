@@ -8,6 +8,7 @@ public class DatabaseManager {
     private init() {
         openDatabase()
         createTables()
+        migrateDatabaseIfNeeded()
         seedWordsIfNeeded()
     }
     
@@ -43,7 +44,11 @@ public class DatabaseManager {
             learned INTEGER DEFAULT 0,
             learned_date TEXT,
             correct_count INTEGER DEFAULT 0,
-            wrong_count INTEGER DEFAULT 0
+            wrong_count INTEGER DEFAULT 0,
+            easiness_factor REAL DEFAULT 2.5,
+            interval_days INTEGER DEFAULT 0,
+            repetition_count INTEGER DEFAULT 0,
+            next_review_date TEXT
         );
         """
         
@@ -206,6 +211,8 @@ public class DatabaseManager {
         }
     }
     
+    private let SELECT_FIELDS = "id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count, easiness_factor, interval_days, repetition_count, next_review_date"
+    
     private func fetchWords(query: String, bindings: [String] = []) -> [Word] {
         var words: [Word] = []
         var statement: OpaquePointer? = nil
@@ -239,6 +246,13 @@ public class DatabaseManager {
                 let correctCount = Int(sqlite3_column_int(statement, 8))
                 let wrongCount = Int(sqlite3_column_int(statement, 9))
                 
+                let easinessFactor = sqlite3_column_double(statement, 10)
+                let intervalDays = Int(sqlite3_column_int(statement, 11))
+                let repetitionCount = Int(sqlite3_column_int(statement, 12))
+                
+                let nextReviewDatePtr = sqlite3_column_text(statement, 13)
+                let nextReviewDate = nextReviewDatePtr != nil ? String(cString: nextReviewDatePtr!) : nil
+                
                 words.append(Word(
                     id: id,
                     word: word,
@@ -249,7 +263,11 @@ public class DatabaseManager {
                     learned: learned,
                     learnedDate: learnedDate,
                     correctCount: correctCount,
-                    wrongCount: wrongCount
+                    wrongCount: wrongCount,
+                    easinessFactor: easinessFactor,
+                    intervalDays: intervalDays,
+                    repetitionCount: repetitionCount,
+                    nextReviewDate: nextReviewDate
                 ))
             }
         } else {
@@ -260,23 +278,23 @@ public class DatabaseManager {
     }
     
     public func getAllWords() -> [Word] {
-        return fetchWords(query: "SELECT id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count FROM words ORDER BY word ASC;")
+        return fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words ORDER BY word ASC;")
     }
     
     public func getTodayWords() -> [Word] {
         let today = getTodayDateString()
-        var words = fetchWords(query: "SELECT id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count FROM words WHERE learned_date = ?;", bindings: [today])
+        var words = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned_date = ?;", bindings: [today])
         
         if words.count < 20 {
             let needed = 20 - words.count
             
             // 1. Fetch unlearned words
-            var unlearned = fetchWords(query: "SELECT id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count FROM words WHERE learned = 0 LIMIT ?;", bindings: [String(needed)])
+            var unlearned = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0 LIMIT ?;", bindings: [String(needed)])
             
             // 2. If we still need more, fetch learned words with the highest wrong_count
             if unlearned.count < needed {
                 let stillNeeded = needed - unlearned.count
-                let reviewWords = fetchWords(query: "SELECT id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count FROM words WHERE learned = 1 AND (learned_date IS NULL OR learned_date != ?) ORDER BY wrong_count DESC, correct_count ASC LIMIT ?;", bindings: [today, String(stillNeeded)])
+                let reviewWords = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1 AND (learned_date IS NULL OR learned_date != ?) ORDER BY wrong_count DESC, correct_count ASC LIMIT ?;", bindings: [today, String(stillNeeded)])
                 unlearned.append(contentsOf: reviewWords)
             }
             
@@ -294,17 +312,19 @@ public class DatabaseManager {
     }
     
     public func updateWordLearnedState(wordId: Int, learned: Bool, date: String?) {
-        let query = "UPDATE words SET learned = ?, learned_date = ? WHERE id = ?;"
+        let query = "UPDATE words SET learned = ?, learned_date = ?, next_review_date = COALESCE(next_review_date, ?) WHERE id = ?;"
         var statement: OpaquePointer? = nil
         if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
             let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
             sqlite3_bind_int(statement, 1, learned ? 1 : 0)
             if let date = date {
                 sqlite3_bind_text(statement, 2, date, -1, SQLITE_TRANSIENT)
+                sqlite3_bind_text(statement, 3, date, -1, SQLITE_TRANSIENT)
             } else {
                 sqlite3_bind_null(statement, 2)
+                sqlite3_bind_null(statement, 3)
             }
-            sqlite3_bind_int(statement, 3, Int32(wordId))
+            sqlite3_bind_int(statement, 4, Int32(wordId))
             
             if sqlite3_step(statement) != SQLITE_DONE {
                 print("Failed to update learned state")
@@ -323,6 +343,7 @@ public class DatabaseManager {
             }
         }
         sqlite3_finalize(statement)
+        updateSM2(wordId: wordId, isCorrect: true)
     }
     
     public func incrementWrongCount(wordId: Int) {
@@ -335,6 +356,7 @@ public class DatabaseManager {
             }
         }
         sqlite3_finalize(statement)
+        updateSM2(wordId: wordId, isCorrect: false)
     }
     
     public func decrementWrongCount(wordId: Int) {
@@ -347,10 +369,32 @@ public class DatabaseManager {
             }
         }
         sqlite3_finalize(statement)
+        updateSM2(wordId: wordId, isCorrect: true)
     }
     
     public func getErrorWords() -> [Word] {
-        return fetchWords(query: "SELECT id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count FROM words WHERE wrong_count > 0 ORDER BY wrong_count DESC;")
+        return fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE wrong_count > 0 ORDER BY wrong_count DESC;")
+    }
+    
+    public func getReviewList() -> [Word] {
+        let today = getTodayDateString()
+        return fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE wrong_count > 0 OR (learned = 1 AND next_review_date <= ?) ORDER BY wrong_count DESC, next_review_date ASC;", bindings: [today])
+    }
+    
+    public func getReviewDueCount() -> Int {
+        let today = getTodayDateString()
+        let query = "SELECT COUNT(*) FROM words WHERE learned = 1 AND next_review_date <= ?;"
+        var statement: OpaquePointer? = nil
+        var count = 0
+        if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(statement, 1, today, -1, SQLITE_TRANSIENT)
+            if sqlite3_step(statement) == SQLITE_ROW {
+                count = Int(sqlite3_column_int(statement, 0))
+            }
+        }
+        sqlite3_finalize(statement)
+        return count
     }
     
     public func getRandomDistractors(excludeWordId: Int, count: Int = 3) -> [String] {
@@ -372,11 +416,141 @@ public class DatabaseManager {
         return distractors
     }
     
+    // MARK: - SM-2 Algorithm implementation
+    public func updateSM2(wordId: Int, isCorrect: Bool) {
+        var ef = 2.5
+        var interval = 0
+        var repCount = 0
+        
+        let selectQuery = "SELECT easiness_factor, interval_days, repetition_count FROM words WHERE id = ?;"
+        var statement: OpaquePointer? = nil
+        if sqlite3_prepare_v2(db, selectQuery, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_int(statement, 1, Int32(wordId))
+            if sqlite3_step(statement) == SQLITE_ROW {
+                ef = sqlite3_column_double(statement, 0)
+                interval = Int(sqlite3_column_int(statement, 1))
+                repCount = Int(sqlite3_column_int(statement, 2))
+            }
+        }
+        sqlite3_finalize(statement)
+        
+        // Response quality parameter (q):
+        // 4: correct response, after a hesitation (isCorrect == true)
+        // 1: incorrect response (isCorrect == false)
+        let q = isCorrect ? 4 : 1
+        
+        if q < 3 {
+            // Incorrect answer resets the interval and repetition count
+            repCount = 0
+            interval = 1
+        } else {
+            // Correct answer calculates interval
+            if repCount == 0 {
+                interval = 1
+            } else if repCount == 1 {
+                interval = 6
+            } else {
+                interval = Int(round(Double(interval) * ef))
+            }
+            repCount += 1
+        }
+        
+        // Calculate new Easiness Factor (EF)
+        // EF' = EF + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))
+        let qDouble = Double(q)
+        ef = ef + (0.1 - (5.0 - qDouble) * (0.08 + (5.0 - qDouble) * 0.02))
+        if ef < 1.3 {
+            ef = 1.3
+        }
+        
+        let nextDate = calculateNextReviewDate(afterDays: interval)
+        
+        let updateQuery = """
+        UPDATE words SET 
+            easiness_factor = ?, 
+            interval_days = ?, 
+            repetition_count = ?, 
+            next_review_date = ? 
+        WHERE id = ?;
+        """
+        if sqlite3_prepare_v2(db, updateQuery, -1, &statement, nil) == SQLITE_OK {
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_double(statement, 1, ef)
+            sqlite3_bind_int(statement, 2, Int32(interval))
+            sqlite3_bind_int(statement, 3, Int32(repCount))
+            sqlite3_bind_text(statement, 4, nextDate, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_int(statement, 5, Int32(wordId))
+            
+            if sqlite3_step(statement) != SQLITE_DONE {
+                print("Failed to update SM-2 status for word \(wordId)")
+            }
+        }
+        sqlite3_finalize(statement)
+    }
+    
+    private func calculateNextReviewDate(afterDays days: Int) -> String {
+        let calendar = Calendar.current
+        let today = Date()
+        guard let futureDate = calendar.date(byAdding: .day, value: days, to: today) else {
+            return getTodayDateString()
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: futureDate)
+    }
+    
+    // MARK: - Auto-Migration logic
+    private func migrateDatabaseIfNeeded() {
+        let columnsToAdd = [
+            ("easiness_factor", "REAL DEFAULT 2.5"),
+            ("interval_days", "INTEGER DEFAULT 0"),
+            ("repetition_count", "INTEGER DEFAULT 0"),
+            ("next_review_date", "TEXT")
+        ]
+        
+        for (columnName, type) in columnsToAdd {
+            if !columnExists(columnName: columnName, inTable: "words") {
+                let alterQuery = "ALTER TABLE words ADD COLUMN \(columnName) \(type);"
+                var errMsg: UnsafeMutablePointer<Int8>? = nil
+                if sqlite3_exec(db, alterQuery, nil, nil, &errMsg) == SQLITE_OK {
+                    print("Successfully migrated column: \(columnName)")
+                } else {
+                    if let error = errMsg {
+                        print("Failed to add column \(columnName): \(String(cString: error))")
+                        sqlite3_free(errMsg)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func columnExists(columnName: String, inTable tableName: String) -> Bool {
+        let query = "PRAGMA table_info(\(tableName));"
+        var statement: OpaquePointer? = nil
+        var exists = false
+        
+        if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let name = sqlite3_column_text(statement, 1) {
+                    let nameStr = String(cString: name)
+                    if nameStr.lowercased() == columnName.lowercased() {
+                        exists = true
+                        break
+                    }
+                 }
+            }
+        }
+        sqlite3_finalize(statement)
+        return exists
+    }
+    
+    // MARK: - Statistics
     public struct Statistics {
         public let totalWords: Int
         public let learnedWords: Int
         public let errorWords: Int
         public let accuracy: Double
+        public let reviewDueCount: Int
     }
     
     public func getStatistics() -> Statistics {
@@ -424,6 +598,14 @@ public class DatabaseManager {
         let totalAttempts = totalCorrect + totalWrong
         let accuracy = totalAttempts > 0 ? (Double(totalCorrect) / Double(totalAttempts)) * 100.0 : 0.0
         
-        return Statistics(totalWords: total, learnedWords: learned, errorWords: errors, accuracy: accuracy)
+        let reviewDue = getReviewDueCount()
+        
+        return Statistics(
+            totalWords: total,
+            learnedWords: learned,
+            errorWords: errors,
+            accuracy: accuracy,
+            reviewDueCount: reviewDue
+        )
     }
 }

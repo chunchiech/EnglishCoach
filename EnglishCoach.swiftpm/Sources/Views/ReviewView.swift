@@ -431,7 +431,7 @@ public struct ReviewView: View {
     }
     
     private func loadErrorWords() {
-        errorWords = DatabaseManager.shared.getErrorWords()
+        errorWords = DatabaseManager.shared.getReviewList()
     }
     
     private func startReviewQuiz() {
