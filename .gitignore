@@ -1,0 +1,63 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two carriage returns
+Icon
+
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on external stores
+.docx
+.TemporaryItems
+.apdisk
+
+# Xcode
+#
+# gitignore contributors: goldin2008, bcardiff
+
+## Build results
+build/
+DerivedData/
+
+## Don't commit personal settings
+xcuserdata/
+
+## Don't commit source code placeholders
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+## Personal Xcode project settings
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+
+# Swift Package Manager
+#
+# Add this line if you want to avoid committing the cached source files of LSPs or SwiftPM
+.build/
+.swiftpm/xcode/
+.swiftpm/configuration/
+
+# SQLite temporary files
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# Log files
+*.log

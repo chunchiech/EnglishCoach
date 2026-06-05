@@ -10,6 +10,7 @@ public class DatabaseManager {
         createTables()
         migrateDatabaseIfNeeded()
         seedWordsIfNeeded()
+        importToeicIfNeeded()
     }
     
     deinit {
@@ -48,7 +49,8 @@ public class DatabaseManager {
             easiness_factor REAL DEFAULT 2.5,
             interval_days INTEGER DEFAULT 0,
             repetition_count INTEGER DEFAULT 0,
-            next_review_date TEXT
+            next_review_date TEXT,
+            level TEXT DEFAULT 'Beginner'
         );
         """
         
@@ -66,8 +68,8 @@ public class DatabaseManager {
         return formatter.string(from: Date())
     }
     
-    private func insertWord(word: String, phonetic: String, translation: String, example: String, exampleTranslation: String) {
-        let insertStatementString = "INSERT INTO words (word, phonetic, translation, example, example_translation) VALUES (?, ?, ?, ?, ?);"
+    private func insertWord(word: String, phonetic: String, translation: String, example: String, exampleTranslation: String, level: String = "Beginner") {
+        let insertStatementString = "INSERT INTO words (word, phonetic, translation, example, example_translation, level) VALUES (?, ?, ?, ?, ?, ?);"
         var statement: OpaquePointer? = nil
         
         if sqlite3_prepare_v2(db, insertStatementString, -1, &statement, nil) == SQLITE_OK {
@@ -78,9 +80,10 @@ public class DatabaseManager {
             sqlite3_bind_text(statement, 3, translation, -1, SQLITE_TRANSIENT)
             sqlite3_bind_text(statement, 4, example, -1, SQLITE_TRANSIENT)
             sqlite3_bind_text(statement, 5, exampleTranslation, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 6, level, -1, SQLITE_TRANSIENT)
             
             if sqlite3_step(statement) != SQLITE_DONE {
-                print("Could not insert row.")
+                // Ignore duplicate insert warnings silently during seeding / importing
             }
         } else {
             print("INSERT statement could not be prepared.")
@@ -211,7 +214,7 @@ public class DatabaseManager {
         }
     }
     
-    private let SELECT_FIELDS = "id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count, easiness_factor, interval_days, repetition_count, next_review_date"
+    private let SELECT_FIELDS = "id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count, easiness_factor, interval_days, repetition_count, next_review_date, level"
     
     private func fetchWords(query: String, bindings: [String] = []) -> [Word] {
         var words: [Word] = []
@@ -253,6 +256,9 @@ public class DatabaseManager {
                 let nextReviewDatePtr = sqlite3_column_text(statement, 13)
                 let nextReviewDate = nextReviewDatePtr != nil ? String(cString: nextReviewDatePtr!) : nil
                 
+                let levelPtr = sqlite3_column_text(statement, 14)
+                let level = levelPtr != nil ? String(cString: levelPtr!) : "Beginner"
+                
                 words.append(Word(
                     id: id,
                     word: word,
@@ -267,7 +273,8 @@ public class DatabaseManager {
                     easinessFactor: easinessFactor,
                     intervalDays: intervalDays,
                     repetitionCount: repetitionCount,
-                    nextReviewDate: nextReviewDate
+                    nextReviewDate: nextReviewDate,
+                    level: level
                 ))
             }
         } else {
@@ -283,22 +290,31 @@ public class DatabaseManager {
     
     public func getTodayWords() -> [Word] {
         let today = getTodayDateString()
-        var words = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned_date = ?;", bindings: [today])
+        let level = UserDefaults.standard.string(forKey: "user_level") ?? "Beginner"
+        
+        var words = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned_date = ? AND level = ?;", bindings: [today, level])
         
         if words.count < 20 {
             let needed = 20 - words.count
             
-            // 1. Fetch unlearned words
-            var unlearned = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0 LIMIT ?;", bindings: [String(needed)])
+            // 1. Fetch unlearned words matching this level
+            var unlearned = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0 AND level = ? LIMIT ?;", bindings: [level, String(needed)])
             
-            // 2. If we still need more, fetch learned words with the highest wrong_count
+            // 2. If we still need more, fetch learned words of this level with highest mistakes
             if unlearned.count < needed {
                 let stillNeeded = needed - unlearned.count
-                let reviewWords = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1 AND (learned_date IS NULL OR learned_date != ?) ORDER BY wrong_count DESC, correct_count ASC LIMIT ?;", bindings: [today, String(stillNeeded)])
+                let reviewWords = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1 AND level = ? AND (learned_date IS NULL OR learned_date != ?) ORDER BY wrong_count DESC, correct_count ASC LIMIT ?;", bindings: [level, today, String(stillNeeded)])
                 unlearned.append(contentsOf: reviewWords)
             }
             
-            // 3. Mark these newly selected words as today's words
+            // 3. If we STILL need more, fetch unlearned words from any level (fallback)
+            if unlearned.count < needed {
+                let stillNeeded = needed - unlearned.count
+                let fallbackWords = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0 AND level != ? LIMIT ?;", bindings: [level, String(stillNeeded)])
+                unlearned.append(contentsOf: fallbackWords)
+            }
+            
+            // 4. Mark these newly selected words as today's words
             for i in 0..<unlearned.count {
                 var w = unlearned[i]
                 w.learned = true
@@ -505,7 +521,8 @@ public class DatabaseManager {
             ("easiness_factor", "REAL DEFAULT 2.5"),
             ("interval_days", "INTEGER DEFAULT 0"),
             ("repetition_count", "INTEGER DEFAULT 0"),
-            ("next_review_date", "TEXT")
+            ("next_review_date", "TEXT"),
+            ("level", "TEXT DEFAULT 'Beginner'")
         ]
         
         for (columnName, type) in columnsToAdd {
@@ -542,6 +559,90 @@ public class DatabaseManager {
         }
         sqlite3_finalize(statement)
         return exists
+    }
+    
+    // MARK: - CSV Import Logic
+    private func importToeicIfNeeded() {
+        var count = 0
+        let queryString = "SELECT COUNT(*) FROM words WHERE level IN ('Beginner', 'Intermediate', 'Advanced') AND word != 'abandon';"
+        var statement: OpaquePointer? = nil
+        
+        if sqlite3_prepare_v2(db, queryString, -1, &statement, nil) == SQLITE_OK {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                count = Int(sqlite3_column_int(statement, 0))
+            }
+        }
+        sqlite3_finalize(statement)
+        
+        // Seed database only contains 100 entries. If database does not contain TOEIC words (usually 3000), we run the importer.
+        if count < 2000 {
+            print("TOEIC words not found or incomplete (current count: \(count)). Importing 3000 words...")
+            importToeicVocabulary()
+        }
+    }
+    
+    public func importToeicVocabulary() {
+        // Find toeic_3000.csv inside resources bundle
+        guard let csvURL = Bundle.module.url(forResource: "toeic_3000", withExtension: "csv") else {
+            print("Could not find toeic_3000.csv in bundle module")
+            return
+        }
+        
+        do {
+            let data = try String(contentsOf: csvURL, encoding: .utf8)
+            let lines = data.components(separatedBy: .newlines)
+            
+            // Execute in single SQLite transaction for sub-second performance
+            sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
+            
+            var count = 0
+            for (index, line) in lines.enumerated() {
+                if index == 0 || line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    continue // Skip header and empty lines
+                }
+                
+                let fields = parseCSVRow(line)
+                if fields.count >= 6 {
+                    let word = fields[0]
+                    let phonetic = fields[1]
+                    let translation = fields[2]
+                    let example = fields[3]
+                    let exampleTranslation = fields[4]
+                    let level = fields[5]
+                    
+                    insertWord(word: word, phonetic: phonetic, translation: translation, example: example, exampleTranslation: exampleTranslation, level: level)
+                    count += 1
+                }
+            }
+            
+            sqlite3_exec(db, "COMMIT;", nil, nil, nil)
+            print("Successfully imported \(count) TOEIC words.")
+        } catch {
+            print("Failed to read TOEIC CSV: \(error)")
+        }
+    }
+    
+    private func parseCSVRow(_ line: String) -> [String] {
+        var result: [String] = []
+        var currentField = ""
+        var inQuotes = false
+        
+        let chars = Array(line)
+        var i = 0
+        while i < chars.count {
+            let char = chars[i]
+            if char == "\"" {
+                inQuotes.toggle()
+            } else if char == "," && !inQuotes {
+                result.append(currentField.trimmingCharacters(in: .whitespacesAndNewlines))
+                currentField = ""
+            } else {
+                currentField.append(char)
+            }
+            i += 1
+        }
+        result.append(currentField.trimmingCharacters(in: .whitespacesAndNewlines))
+        return result
     }
     
     // MARK: - Statistics

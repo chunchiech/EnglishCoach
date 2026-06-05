@@ -18,6 +18,9 @@ public struct Word: Identifiable, Codable, Hashable {
     public var repetitionCount: Int
     public var nextReviewDate: String?
     
+    // Difficulty Level
+    public var level: String // "Beginner", "Intermediate", "Advanced"
+    
     public init(
         id: Int,
         word: String,
@@ -32,7 +35,8 @@ public struct Word: Identifiable, Codable, Hashable {
         easinessFactor: Double = 2.5,
         intervalDays: Int = 0,
         repetitionCount: Int = 0,
-        nextReviewDate: String? = nil
+        nextReviewDate: String? = nil,
+        level: String = "Beginner"
     ) {
         self.id = id
         self.word = word
@@ -48,5 +52,6 @@ public struct Word: Identifiable, Codable, Hashable {
         self.intervalDays = intervalDays
         self.repetitionCount = repetitionCount
         self.nextReviewDate = nextReviewDate
+        self.level = level
     }
 }

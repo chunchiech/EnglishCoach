@@ -3,6 +3,7 @@ import SwiftUI
 public struct DashboardView: View {
     @State private var stats = DatabaseManager.shared.getStatistics()
     @State private var todayWords: [Word] = []
+    @State private var userLevel = UserDefaults.standard.string(forKey: "user_level") ?? "Beginner"
     
     @State private var showLearningFlow = false
     @State private var showQuizFlow = false
@@ -32,6 +33,15 @@ public struct DashboardView: View {
             VStack(spacing: 24) {
                 // Welcoming Header
                 headerSection
+                
+                // Difficulty Level Selector
+                Picker("Level", selection: $userLevel) {
+                    Text("Beginner").tag("Beginner")
+                    Text("Intermediate").tag("Intermediate")
+                    Text("Advanced").tag("Advanced")
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 24)
                 
                 // Today's Goal Card
                 dailyGoalCard
@@ -63,6 +73,10 @@ public struct DashboardView: View {
                 .onDisappear {
                     refreshData()
                 }
+        }
+        .onChange(of: userLevel) { newLevel in
+            UserDefaults.standard.set(newLevel, forKey: "user_level")
+            refreshData()
         }
     }
     

@@ -91,6 +91,14 @@ public struct LibraryView: View {
                                         .background(Color.purple.opacity(0.1))
                                         .cornerRadius(4)
                                 }
+                                
+                                Text(word.level)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(levelColor(word.level))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(levelColor(word.level).opacity(0.1))
+                                    .cornerRadius(4)
                             }
                             
                             HStack(spacing: 6) {
@@ -195,6 +203,14 @@ public struct LibraryView: View {
                         .foregroundColor(.purple)
                 }
             }
+        }
+    }
+    private func levelColor(_ level: String) -> Color {
+        switch level {
+        case "Beginner": return .green
+        case "Intermediate": return .orange
+        case "Advanced": return .red
+        default: return .secondary
         }
     }
 }

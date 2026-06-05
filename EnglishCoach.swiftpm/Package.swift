@@ -14,7 +14,7 @@ let package = Package(
             bundleIdentifier: "com.andy.EnglishCoach",
             displayVersion: "1.0",
             bundleVersion: "1",
-            appIcon: .placeholder(icon: .openBook),
+            appIcon: .asset("AppIcon"),
             accentColor: .presetColor(.purple),
             supportedDeviceFamilies: [
                 .phone,
@@ -28,7 +28,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "App",
-            path: "Sources"
+            path: "Sources",
+            resources: [
+                .process("Resources")
+            ]
         )
     ]
 )
