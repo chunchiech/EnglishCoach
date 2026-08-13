@@ -25,7 +25,7 @@
 
 /* Begin PBXFileReference section */
 		05C501346D0CF616B7BB0085 /* ReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewView.swift; sourceTree = "<group>"; };
-		2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = toeic_3000.csv; sourceTree = "<group>"; };
+		2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */ = {isa = PBXFileReference; path = toeic_3000.csv; sourceTree = "<group>"; };
 		482D169515229EA7A557BC74 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		741DE1B5CBC5DE284696EBF7 /* ProgressRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRing.swift; sourceTree = "<group>"; };
 		7750245D06DE6393E0A60C5D /* WordCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordCardView.swift; sourceTree = "<group>"; };
@@ -38,7 +38,7 @@
 		AED5335C57AD5C97351CB3F4 /* DailyLearningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLearningView.swift; sourceTree = "<group>"; };
 		B0F90F1690D7128D5DFF4EB8 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		F372718540E9F113946EFF7C /* QuizView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizView.swift; sourceTree = "<group>"; };
-		F82FA1F03293BF5E590C6523 /* EnglishCoach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EnglishCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F82FA1F03293BF5E590C6523 /* EnglishCoach.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EnglishCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -158,6 +158,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					9A703759BCC344E67CCDB350 = {
+						DevelopmentTeam = 2P8SRV3VG2;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -222,15 +223,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2P8SRV3VG2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.andy.EnglishCoach;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -243,15 +247,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2P8SRV3VG2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.andy.EnglishCoach;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
