@@ -40,12 +40,12 @@ public struct ReviewView: View {
                     }
                 }
             }
-            .navigationTitle(showQuizMode ? "Review Quiz" : "Incorrect Words")
+            .navigationTitle(showQuizMode ? "複習測驗" : "錯題庫")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if showQuizMode {
-                        Button("Exit Quiz") {
+                        Button("離開測驗") {
                             withAnimation {
                                 showQuizMode = false
                                 loadErrorWords()
@@ -53,7 +53,7 @@ public struct ReviewView: View {
                         }
                         .foregroundColor(.purple)
                     } else {
-                        Button("Close") {
+                        Button("關閉") {
                             dismiss()
                         }
                         .foregroundColor(.purple)
@@ -65,7 +65,7 @@ public struct ReviewView: View {
                         Button(action: startReviewQuiz) {
                             HStack(spacing: 4) {
                                 Image(systemName: "play.fill")
-                                Text("Quiz")
+                                Text("測驗")
                             }
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.white)
@@ -93,9 +93,9 @@ public struct ReviewView: View {
             // Stats Header
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(errorWords.count) Words")
+                    Text("\(errorWords.count) 個單字")
                         .font(.system(size: 20, weight: .bold, design: .rounded))
-                    Text("Words requiring extra practice")
+                    Text("需要加強練習的單字")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -130,7 +130,7 @@ public struct ReviewView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .font(.caption)
-                                Text("\(word.wrongCount) errors")
+                                Text("\(word.wrongCount) 次錯誤")
                                     .font(.system(size: 12, weight: .bold))
                             }
                             .foregroundColor(.orange)
@@ -159,9 +159,9 @@ public struct ReviewView: View {
             }
             
             VStack(spacing: 8) {
-                Text("All Clear!")
+                Text("全部完成！")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("Great work! You have no words in your review list. Keep scoring 100% on quizzes!")
+                Text("太棒了！錯題庫中沒有需要複習的單字。請繼續保持！")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -169,7 +169,7 @@ public struct ReviewView: View {
             }
             
             Button(action: { dismiss() }) {
-                Text("Return to Dashboard")
+                Text("返回首頁")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .padding(.horizontal, 32)
@@ -186,11 +186,11 @@ public struct ReviewView: View {
         return VStack(spacing: 20) {
             // Progress
             HStack {
-                Text("Review \(quizIndex + 1) of \(quizQuestions.count)")
+                Text("複習 \(quizIndex + 1) / \(quizQuestions.count)")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(.purple)
                 Spacer()
-                Text("Correct: \(correctCount)")
+                Text("正確：\(correctCount)")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(.green)
             }
@@ -244,7 +244,7 @@ public struct ReviewView: View {
             
             if isAnswered {
                 Button(action: handleNextReviewQuizQuestion) {
-                    Text(quizIndex == quizQuestions.count - 1 ? "Finish Review" : "Next Word")
+                    Text(quizIndex == quizQuestions.count - 1 ? "完成複習" : "下一個單字")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -361,14 +361,14 @@ public struct ReviewView: View {
     private var reviewQuizResultsView: some View {
         VStack(spacing: 20) {
             VStack(spacing: 8) {
-                Text("Review Completed")
+                Text("複習完成")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                 
-                Text("\(correctCount) / \(quizQuestions.count) Resolved")
+                Text("已解決 \(correctCount) / \(quizQuestions.count)")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(correctCount == quizQuestions.count ? .green : .purple)
                 
-                Text("Correct answers have been removed or reduced from the review list.")
+                Text("答對的單字已從錯題庫中移除或減少錯誤次數。")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -394,7 +394,7 @@ public struct ReviewView: View {
                             
                             Spacer()
                             
-                            Text(result.isCorrect ? "Resolved" : "Needs Practice")
+                            Text(result.isCorrect ? "已解決" : "需練習")
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(result.isCorrect ? .green : .orange)
                                 .padding(.horizontal, 8)
@@ -417,7 +417,7 @@ public struct ReviewView: View {
                     loadErrorWords()
                 }
             }) {
-                Text("Return to Review List")
+                Text("返回錯題庫")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -481,7 +481,7 @@ public struct ReviewView: View {
                     Spacer()
                     
                     Button(action: { selectedWord = nil }) {
-                        Text("Done")
+                        Text("完成")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -493,11 +493,11 @@ public struct ReviewView: View {
                     .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("Word Detail")
+            .navigationTitle("單字詳情")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Close") { selectedWord = nil }
+                    Button("關閉") { selectedWord = nil }
                         .foregroundColor(.purple)
                 }
             }

@@ -43,7 +43,7 @@ public struct ProgressRing: View {
                 Text("\(Int(progress * 100))%")
                     .font(.system(size: size * 0.22, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
-                Text("Today's Progress")
+                Text("今日進度")
                     .font(.system(size: size * 0.08, weight: .medium, design: .rounded))
                     .foregroundColor(.secondary)
             }

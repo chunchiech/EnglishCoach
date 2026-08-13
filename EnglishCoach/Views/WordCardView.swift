@@ -88,7 +88,7 @@ public struct WordCardView: View {
                 HStack {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.caption)
-                    Text("Tap to reveal meaning")
+                    Text("點擊查看中文意思")
                         .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundColor(.secondary)
@@ -114,7 +114,7 @@ public struct WordCardView: View {
                     .padding(.horizontal, 30)
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Example:")
+                    Text("例句：")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.purple)
                         .textCase(.uppercase)
@@ -137,7 +137,7 @@ public struct WordCardView: View {
                 HStack {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.caption)
-                    Text("Tap to view word")
+                    Text("點擊查看單字")
                         .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundColor(.secondary)

@@ -38,11 +38,11 @@ public struct QuizView: View {
                     quizContent
                 }
             }
-            .navigationTitle("Word Quiz")
+            .navigationTitle("單字測驗")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Quit") {
+                    Button("離開") {
                         dismiss()
                     }
                     .foregroundColor(.purple)
@@ -60,17 +60,17 @@ public struct QuizView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
             
-            Text("No words available for a quiz.")
+            Text("無可用於測驗的單字。")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
             
-            Text("Please study today's 20 words first to generate quiz questions.")
+            Text("請先學習今日的 20 個單字以生成測驗題目。")
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
             
             Button(action: { dismiss() }) {
-                Text("Go Back")
+                Text("返回")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .padding(.horizontal, 40)
@@ -87,11 +87,11 @@ public struct QuizView: View {
         return VStack(spacing: 20) {
             // Progress
             HStack {
-                Text("Question \(currentIndex + 1) of \(questions.count)")
+                Text("題目 \(currentIndex + 1) / \(questions.count)")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(.purple)
                 Spacer()
-                Text("Correct: \(correctAnswersCount)")
+                Text("正確：\(correctAnswersCount)")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(.green)
             }
@@ -149,7 +149,7 @@ public struct QuizView: View {
             // Next Button
             if isAnswered {
                 Button(action: handleNextQuestion) {
-                    Text(currentIndex == questions.count - 1 ? "Finish Quiz" : "Next Question")
+                    Text(currentIndex == questions.count - 1 ? "完成測驗" : "下一題")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -315,15 +315,15 @@ public struct QuizView: View {
         VStack(spacing: 20) {
             // Score Header
             VStack(spacing: 8) {
-                Text("Quiz Results")
+                Text("測驗結果")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 
-                Text("\(correctAnswersCount) / \(questions.count) Correct")
+                Text("答對 \(correctAnswersCount) / \(questions.count) 題")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(correctAnswersCount >= 6 ? .green : .orange)
                 
-                Text("Accuracy: \(Int((Double(correctAnswersCount) / Double(questions.count)) * 100))%")
+                Text("正確率：\(Int((Double(correctAnswersCount) / Double(questions.count)) * 100))%")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.secondary)
             }
@@ -331,7 +331,7 @@ public struct QuizView: View {
             
             // Detailed breakdown
             VStack(alignment: .leading, spacing: 10) {
-                Text("Detailed Review")
+                Text("詳細檢討")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 24)
@@ -357,7 +357,7 @@ public struct QuizView: View {
                                 
                                 if !result.isCorrect {
                                     VStack(alignment: .trailing, spacing: 2) {
-                                        Text("Answered:")
+                                        Text("選擇答案：")
                                             .font(.system(size: 10))
                                             .foregroundColor(.secondary)
                                         Text(result.chosenAnswer)
@@ -381,7 +381,7 @@ public struct QuizView: View {
                 onComplete()
                 dismiss()
             }) {
-                Text("Finish")
+                Text("完成")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)

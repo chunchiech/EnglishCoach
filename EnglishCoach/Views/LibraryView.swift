@@ -35,7 +35,7 @@ public struct LibraryView: View {
                     }
                 }
             }
-            .navigationTitle("Word Library")
+            .navigationTitle("單字庫")
             .sheet(item: $selectedWord) { word in
                 cardReviewSheet(word: word)
             }
@@ -51,7 +51,7 @@ public struct LibraryView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
                 
-                TextField("Search words or translations...", text: $searchText)
+                TextField("搜尋單字或中文翻譯...", text: $searchText)
                     .font(.system(size: 15))
                     .autocorrectionDisabled(true)
                     .textInputAutocapitalization(.never)
@@ -83,7 +83,7 @@ public struct LibraryView: View {
                                     .foregroundColor(.primary)
                                 
                                 if word.learned {
-                                    Text("Learned")
+                                    Text("已學習")
                                         .font(.system(size: 10, weight: .bold))
                                         .foregroundColor(.purple)
                                         .padding(.horizontal, 6)
@@ -92,7 +92,7 @@ public struct LibraryView: View {
                                         .cornerRadius(4)
                                 }
                                 
-                                Text(word.level)
+                                Text(translatedLevel(word.level))
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(levelColor(word.level))
                                     .padding(.horizontal, 6)
@@ -157,9 +157,9 @@ public struct LibraryView: View {
                 .font(.system(size: 50))
                 .foregroundColor(.secondary)
             
-            Text("No Matches Found")
+            Text("未找到符合的單字")
                 .font(.system(size: 17, weight: .bold, design: .rounded))
-            Text("Try searching for another word or character.")
+            Text("請嘗試搜尋其他單字或中文。")
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
             Spacer()
@@ -183,7 +183,7 @@ public struct LibraryView: View {
                     Spacer()
                     
                     Button(action: { selectedWord = nil }) {
-                        Text("Close")
+                        Text("關閉")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -195,16 +195,26 @@ public struct LibraryView: View {
                     .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("Word Details")
+            .navigationTitle("單字詳情")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Close") { selectedWord = nil }
+                    Button("關閉") { selectedWord = nil }
                         .foregroundColor(.purple)
                 }
             }
         }
     }
+    
+    private func translatedLevel(_ level: String) -> String {
+        switch level {
+        case "Beginner": return "初級"
+        case "Intermediate": return "中級"
+        case "Advanced": return "高級"
+        default: return level
+        }
+    }
+    
     private func levelColor(_ level: String) -> Color {
         switch level {
         case "Beginner": return .green

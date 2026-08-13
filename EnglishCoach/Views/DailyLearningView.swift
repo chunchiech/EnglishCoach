@@ -23,7 +23,7 @@ public struct DailyLearningView: View {
                     VStack {
                         ProgressView()
                             .scaleEffect(1.5)
-                        Text("Loading Today's Words...")
+                        Text("載入今日單字中...")
                             .font(.system(size: 16, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
                             .padding(.top, 16)
@@ -35,11 +35,11 @@ public struct DailyLearningView: View {
                         // Progress Header
                         VStack(spacing: 8) {
                             HStack {
-                                Text("Card \(currentIndex + 1) of \(words.count)")
+                                Text("卡片 \(currentIndex + 1) / \(words.count)")
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                                     .foregroundColor(.purple)
                                 Spacer()
-                                Text("\(Int((Double(currentIndex) / Double(words.count)) * 100))% Done")
+                                Text("已完成 \(Int((Double(currentIndex) / Double(words.count)) * 100))%")
                                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                                     .foregroundColor(.secondary)
                             }
@@ -87,7 +87,7 @@ public struct DailyLearningView: View {
                             }) {
                                 HStack {
                                     Image(systemName: "chevron.left")
-                                    Text("Previous")
+                                    Text("上一個")
                                 }
                                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                                 .foregroundColor(currentIndex > 0 ? .purple : .secondary)
@@ -105,7 +105,7 @@ public struct DailyLearningView: View {
                                 handleNext()
                             }) {
                                 HStack {
-                                    Text(currentIndex == words.count - 1 ? "Finish" : "Next")
+                                    Text(currentIndex == words.count - 1 ? "完成" : "下一個")
                                     if currentIndex < words.count - 1 {
                                         Image(systemName: "chevron.right")
                                     } else {
@@ -132,11 +132,11 @@ public struct DailyLearningView: View {
                     }
                 }
             }
-            .navigationTitle("Today's Words")
+            .navigationTitle("今日單字")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Quit") {
+                    Button("離開") {
                         dismiss()
                     }
                     .foregroundColor(.purple)
@@ -188,11 +188,11 @@ public struct DailyLearningView: View {
             }
             
             VStack(spacing: 12) {
-                Text("Great Job!")
+                Text("太棒了！")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 
-                Text("You've studied all 20 daily vocabulary words. Keep up the good work!")
+                Text("你已完成今日 20 個每日單字學習。繼續保持！")
                     .font(.system(size: 16))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -205,7 +205,7 @@ public struct DailyLearningView: View {
                 onComplete()
                 dismiss()
             }) {
-                Text("Back to Dashboard")
+                Text("返回首頁")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)

@@ -9,13 +9,13 @@ public struct MainTabView: View {
         TabView(selection: $selectedTab) {
             DashboardView()
                 .tabItem {
-                    Label("Dashboard", systemImage: "house.fill")
+                    Label("首頁", systemImage: "house.fill")
                 }
                 .tag(0)
             
             LibraryView()
                 .tabItem {
-                    Label("Library", systemImage: "books.vertical.fill")
+                    Label("單字庫", systemImage: "books.vertical.fill")
                 }
                 .tag(1)
         }

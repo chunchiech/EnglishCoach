@@ -35,10 +35,10 @@ public struct DashboardView: View {
                 headerSection
                 
                 // Difficulty Level Selector
-                Picker("Level", selection: $userLevel) {
-                    Text("Beginner").tag("Beginner")
-                    Text("Intermediate").tag("Intermediate")
-                    Text("Advanced").tag("Advanced")
+                Picker("難度", selection: $userLevel) {
+                    Text("初級").tag("Beginner")
+                    Text("中級").tag("Intermediate")
+                    Text("高級").tag("Advanced")
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 24)
@@ -121,24 +121,24 @@ public struct DashboardView: View {
                 ProgressRing(progress: todayProgress, size: 120, strokeWidth: 12)
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Daily Vocabulary")
+                    Text("每日單字")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
                     
-                    Text("Learn and review 20 daily words to build your core vocabulary.")
+                    Text("每日學習與複習 20 個單字，建立核心詞彙量。")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
                     
-                    Text("\(todayWords.filter { $0.correctCount > 0 || $0.wrongCount > 0 }.count) / 20 Words Practiced")
+                    Text("已練習 \(todayWords.filter { $0.correctCount > 0 || $0.wrongCount > 0 }.count) / 20 個單字")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.purple)
                 }
             }
             
             Button(action: { showLearningFlow = true }) {
-                Text(todayProgress >= 1.0 ? "Practice Again" : "Start Today's Words")
+                Text(todayProgress >= 1.0 ? "再次練習" : "開始今日單字")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -163,7 +163,7 @@ public struct DashboardView: View {
     
     private var statsGrid: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Statistics")
+            Text("統計")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
                 .padding(.horizontal, 24)
@@ -171,36 +171,36 @@ public struct DashboardView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                 // Stat 1: Total Vocabulary Learned
                 statBox(
-                    title: "Total Learned",
+                    title: "已學習",
                     value: "\(stats.learnedWords)",
-                    subTitle: "out of \(stats.totalWords) words",
+                    subTitle: "共 \(stats.totalWords) 個單字",
                     iconName: "book.closed.fill",
                     color: .blue
                 )
                 
                 // Stat 2: Accuracy
                 statBox(
-                    title: "Quiz Accuracy",
+                    title: "測驗正確率",
                     value: String(format: "%.1f%%", stats.accuracy),
-                    subTitle: "overall success rate",
+                    subTitle: "總體正確率",
                     iconName: "percent",
                     color: .green
                 )
                 
                 // Stat 3: Review Due
                 statBox(
-                    title: "Review Due",
+                    title: "待複習",
                     value: "\(stats.reviewDueCount)",
-                    subTitle: "due today (SM-2)",
+                    subTitle: "今日需複習 (SM-2)",
                     iconName: "calendar.badge.clock",
                     color: stats.reviewDueCount > 0 ? .orange : .secondary
                 )
                 
                 // Stat 4: All Mistakes
                 statBox(
-                    title: "All Mistakes",
+                    title: "錯題",
                     value: "\(stats.errorWords)",
-                    subTitle: "wrong answers list",
+                    subTitle: "答錯單字列表",
                     iconName: "exclamationmark.triangle.fill",
                     color: stats.errorWords > 0 ? .red : .secondary
                 )
@@ -260,10 +260,10 @@ public struct DashboardView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Vocabulary Quiz")
+                        Text("單字測驗")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
-                        Text("Test your knowledge on today's words")
+                        Text("測驗今日學習的單字")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -292,10 +292,10 @@ public struct DashboardView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Smart Review Center")
+                        Text("智慧複習中心")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
-                        Text("Review scheduled words and correct mistakes")
+                        Text("複習排程單字與訂正錯題")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -333,8 +333,8 @@ public struct DashboardView: View {
     
     private func getGreeting() -> String {
         let hour = Calendar.current.component(.hour, from: Date())
-        if hour < 12 { return "Good Morning" }
-        if hour < 18 { return "Good Afternoon" }
-        return "Good Evening"
+        if hour < 12 { return "早安" }
+        if hour < 18 { return "午安" }
+        return "晚安"
     }
 }
