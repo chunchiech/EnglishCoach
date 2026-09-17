@@ -17,11 +17,18 @@ public struct QuizView: View {
     @State private var correctAnswersCount = 0
     @State private var showScorecard = false
     @State private var quizResults: [(word: Word, isCorrect: Bool, chosenAnswer: String)] = []
+    @State private var showPaywall = false
+    @State private var showTargetReachedAlert = false
+    
+    @StateObject private var practiceManager = DailyPracticeManager.shared
+    @StateObject private var premiumManager = PremiumManager.shared
     
     public var onComplete: () -> Void
+    public var onNavigateToReview: (() -> Void)?
     
-    public init(onComplete: @escaping () -> Void) {
+    public init(onComplete: @escaping () -> Void, onNavigateToReview: (() -> Void)? = nil) {
         self.onComplete = onComplete
+        self.onNavigateToReview = onNavigateToReview
     }
     
     public var body: some View {
@@ -49,7 +56,21 @@ public struct QuizView: View {
                 }
             }
             .onAppear {
-                generateQuiz()
+                if !premiumManager.isPremium && practiceManager.isDailyLimitReached {
+                    showPaywall = true
+                } else {
+                    generateQuiz()
+                }
+            }
+            .sheet(isPresented: $showPaywall) {
+                PremiumView()
+            }
+            .alert("今日目標已達成", isPresented: $showTargetReachedAlert) {
+                Button("確定", role: .cancel) {
+                    dismiss()
+                }
+            } message: {
+                Text("您已完成今日設定的 \(practiceManager.premiumDailyTarget) 題目標！")
             }
         }
     }
@@ -63,7 +84,7 @@ public struct QuizView: View {
             Text("無可用於測驗的單字。")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
             
-            Text("請先學習今日的 20 個單字以生成測驗題目。")
+            Text("請先學習今日單字以生成測驗題目。")
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -257,11 +278,9 @@ public struct QuizView: View {
         let isCorrect = option == question.correctOption
         if isCorrect {
             correctAnswersCount += 1
-            DatabaseManager.shared.incrementCorrectCount(wordId: question.word.id)
-        } else {
-            DatabaseManager.shared.incrementWrongCount(wordId: question.word.id)
         }
         
+        // Purely in-memory session tracking. Do NOT write to SQLite or DailyPracticeManager here.
         quizResults.append((word: question.word, isCorrect: isCorrect, chosenAnswer: option))
     }
     
@@ -273,15 +292,28 @@ public struct QuizView: View {
                 currentIndex += 1
             }
         } else {
+            // Rule 5: Commit immediately upon completing the 10th question before showing scorecard
+            commitQuizSession()
             withAnimation(.spring()) {
                 showScorecard = true
             }
         }
     }
     
+    private func commitQuizSession() {
+        let sessionResults = quizResults.map { ($0.word, $0.isCorrect) }
+        let success = DatabaseManager.shared.commitQuizSession(results: sessionResults)
+        if success {
+            for result in quizResults {
+                _ = practiceManager.recordCompletedQuestion(id: "quiz_\(result.word.id)")
+            }
+            onComplete()
+        }
+    }
+    
     private func generateQuiz() {
         // Fetch today's words to build quiz
-        let todayWords = DatabaseManager.shared.getTodayWords()
+        let todayWords = DatabaseManager.shared.getTodayWords(isPremium: premiumManager.isPremium)
         
         if todayWords.isEmpty {
             return
@@ -312,22 +344,30 @@ public struct QuizView: View {
     
     @ViewBuilder
     private var scorecardView: some View {
-        VStack(spacing: 20) {
+        let wrongWordsCount = questions.count - correctAnswersCount
+        let accuracyPercent = questions.isEmpty ? 0 : Int((Double(correctAnswersCount) / Double(questions.count)) * 100)
+        
+        VStack(spacing: 16) {
             // Score Header
-            VStack(spacing: 8) {
-                Text("測驗結果")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+            VStack(spacing: 6) {
+                Text("測驗成果驗收")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 
-                Text("答對 \(correctAnswersCount) / \(questions.count) 題")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundColor(correctAnswersCount >= 6 ? .green : .orange)
-                
-                Text("正確率：\(Int((Double(correctAnswersCount) / Double(questions.count)) * 100))%")
-                    .font(.system(size: 16, weight: .medium))
+                Text(wrongWordsCount == 0 ? "🎉 全部掌握，太厲害了！" : "今日完成了一次精準自我檢測")
+                    .font(.system(size: 14))
                     .foregroundColor(.secondary)
             }
-            .padding(.top, 20)
+            .padding(.top, 16)
+            
+            // 4-Stat Metric Grid
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                metricBox(title: "完成題數", value: "\(questions.count) 題", icon: "checkmark.circle.fill", color: .blue)
+                metricBox(title: "答對題數", value: "\(correctAnswersCount) 題", icon: "hand.thumbsup.fill", color: .green)
+                metricBox(title: "測驗正確率", value: "\(accuracyPercent)%", icon: "percent", color: .purple)
+                metricBox(title: "待加強單字", value: "\(wrongWordsCount) 個", icon: "exclamationmark.triangle.fill", color: wrongWordsCount > 0 ? .orange : .green)
+            }
+            .padding(.horizontal, 24)
             
             // Detailed breakdown
             VStack(alignment: .leading, spacing: 10) {
@@ -346,11 +386,35 @@ public struct QuizView: View {
                                     .font(.title3)
                                 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(result.word.word)
-                                        .font(.system(size: 16, weight: .semibold))
+                                    HStack(spacing: 6) {
+                                        Text(result.word.word)
+                                            .font(.system(size: 16, weight: .semibold))
+                                        
+                                        if !result.word.example.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            Button(action: {
+                                                SoundPlayer.shared.speakSentence(result.word.example)
+                                            }) {
+                                                Image(systemName: "speaker.wave.2.fill")
+                                                    .font(.system(size: 11))
+                                                    .foregroundColor(.purple)
+                                                    .padding(4)
+                                                    .background(Color.purple.opacity(0.1))
+                                                    .clipShape(Circle())
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        }
+                                    }
+                                    
                                     Text(result.word.translation)
                                         .font(.system(size: 13))
                                         .foregroundColor(.secondary)
+                                    
+                                    if !result.word.example.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        Text(result.word.example)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.purple.opacity(0.85))
+                                            .lineLimit(2)
+                                    }
                                 }
                                 
                                 Spacer()
@@ -377,27 +441,93 @@ public struct QuizView: View {
             
             Spacer()
             
-            Button(action: {
-                onComplete()
-                dismiss()
-            }) {
-                Text("完成")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        LinearGradient(
-                            colors: [.purple, .blue],
-                            startPoint: .leading,
-                            endPoint: .trailing
+            // Action Buttons
+            VStack(spacing: 12) {
+                if wrongWordsCount > 0 {
+                    Button(action: {
+                        onComplete()
+                        dismiss()
+                        onNavigateToReview?()
+                    }) {
+                        HStack(spacing: 6) {
+                            Text("前往智慧複習中心 ➜")
+                            Image(systemName: "calendar.badge.clock")
+                        }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [.purple, .blue],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
-                    )
-                    .cornerRadius(16)
-                    .shadow(color: Color.purple.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .cornerRadius(16)
+                        .shadow(color: Color.purple.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    
+                    Button(action: {
+                        onComplete()
+                        dismiss()
+                    }) {
+                        Text("返回首頁")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 4)
+                    }
+                } else {
+                    Button(action: {
+                        onComplete()
+                        dismiss()
+                    }) {
+                        Text("太棒了，完成今日學習 ➜")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [.green, .blue],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: Color.green.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                }
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
         }
+    }
+    
+    @ViewBuilder
+    private func metricBox(title: String, value: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.12))
+                    .frame(width: 34, height: 34)
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(color)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding(10)
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(12)
     }
 }

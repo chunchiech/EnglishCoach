@@ -1,0 +1,98 @@
+{
+  "identifier" : "B53613F9",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1290",
+      "familyShareable" : false,
+      "internalID" : "6450000001",
+      "localizations" : [
+        {
+          "description" : "永久解鎖全 3,070 個 TOEIC 單字與無限制學習功能",
+          "displayName" : "EnglishCoach Premium 完整版",
+          "locale" : "zh_TW"
+        }
+      ],
+      "productID" : "com.andy.EnglishCoach.premium",
+      "referenceName" : "Premium Unlock",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21495821",
+      "localizations" : [
+        {
+          "description" : "EnglishCoach 尊榮會員訂閱群組",
+          "displayName" : "EnglishCoach Premium",
+          "locale" : "zh_TW"
+        }
+      ],
+      "name" : "EnglishCoach_Subscriptions",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "90",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6450000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "解鎖全 3,070 單字庫與每日無限練習",
+              "displayName" : "EnglishCoach 月費尊榮會員",
+              "locale" : "zh_TW"
+            }
+          ],
+          "productID" : "com.andy.EnglishCoach.subscription.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Monthly Subscription",
+          "subscriptionGroupID" : "21495821",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "690",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6450000003",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "解鎖全 3,070 單字庫與每日無限練習（最划算）",
+              "displayName" : "EnglishCoach 年費尊榮會員",
+              "locale" : "zh_TW"
+            }
+          ],
+          "productID" : "com.andy.EnglishCoach.subscription.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Annual Subscription",
+          "subscriptionGroupID" : "21495821",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}

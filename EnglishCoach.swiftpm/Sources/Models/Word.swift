@@ -21,6 +21,13 @@ public struct Word: Identifiable, Codable, Hashable {
     // Difficulty Level
     public var level: String // "Beginner", "Intermediate", "Advanced"
     
+    // Metadata fields
+    public var difficulty: Int // 1 to 5
+    public var topic: String
+    public var subtopic: String
+    public var examTags: [String]
+    public var partOfSpeech: String
+    
     public init(
         id: Int,
         word: String,
@@ -36,7 +43,12 @@ public struct Word: Identifiable, Codable, Hashable {
         intervalDays: Int = 0,
         repetitionCount: Int = 0,
         nextReviewDate: String? = nil,
-        level: String = "Beginner"
+        level: String = "Beginner",
+        difficulty: Int = 1,
+        topic: String = "",
+        subtopic: String = "",
+        examTags: [String] = ["TOEIC"],
+        partOfSpeech: String = ""
     ) {
         self.id = id
         self.word = word
@@ -53,5 +65,10 @@ public struct Word: Identifiable, Codable, Hashable {
         self.repetitionCount = repetitionCount
         self.nextReviewDate = nextReviewDate
         self.level = level
+        self.difficulty = difficulty
+        self.topic = topic
+        self.subtopic = subtopic
+        self.examTags = examTags
+        self.partOfSpeech = partOfSpeech
     }
 }

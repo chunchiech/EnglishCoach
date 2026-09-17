@@ -6,19 +6,22 @@ public struct ProgressRing: View {
     public var strokeWidth: CGFloat = 16
     public var primaryColor: Color = .purple
     public var secondaryColor: Color = Color(.systemGray6)
+    public var centerText: String? = nil
     
     public init(
         progress: Double,
         size: CGFloat = 160,
         strokeWidth: CGFloat = 16,
         primaryColor: Color = .purple,
-        secondaryColor: Color = Color(.systemGray6)
+        secondaryColor: Color = Color(.systemGray6),
+        centerText: String? = nil
     ) {
         self.progress = progress
         self.size = size
         self.strokeWidth = strokeWidth
         self.primaryColor = primaryColor
         self.secondaryColor = secondaryColor
+        self.centerText = centerText
     }
     
     public var body: some View {
@@ -40,7 +43,7 @@ public struct ProgressRing: View {
                 .animation(.spring(response: 0.6, dampingFraction: 0.8), value: progress)
             
             VStack(spacing: 4) {
-                Text("\(Int(progress * 100))%")
+                Text(centerText ?? "\(Int(progress * 100))%")
                     .font(.system(size: size * 0.22, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 Text("今日進度")

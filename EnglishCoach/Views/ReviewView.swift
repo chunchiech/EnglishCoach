@@ -15,6 +15,11 @@ public struct ReviewView: View {
     @State private var correctCount = 0
     @State private var quizResults: [(word: Word, isCorrect: Bool)] = []
     @State private var showQuizResults = false
+    @State private var showPaywall = false
+    @State private var showTargetReachedAlert = false
+    
+    @StateObject private var practiceManager = DailyPracticeManager.shared
+    @StateObject private var premiumManager = PremiumManager.shared
     
     public init() {}
     
@@ -40,7 +45,7 @@ public struct ReviewView: View {
                     }
                 }
             }
-            .navigationTitle(showQuizMode ? "複習測驗" : "錯題庫")
+            .navigationTitle(showQuizMode ? "複習測驗" : "智慧複習中心")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -59,28 +64,17 @@ public struct ReviewView: View {
                         .foregroundColor(.purple)
                     }
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if !showQuizMode && !errorWords.isEmpty {
-                        Button(action: startReviewQuiz) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "play.fill")
-                                Text("測驗")
-                            }
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing)
-                            )
-                            .cornerRadius(12)
-                        }
-                    }
-                }
             }
             .sheet(item: $selectedWord) { word in
                 cardReviewSheet(word: word)
+            }
+            .sheet(isPresented: $showPaywall) {
+                PremiumView()
+            }
+            .alert("今日目標已達成", isPresented: $showTargetReachedAlert) {
+                Button("確定", role: .cancel) { }
+            } message: {
+                Text("您已完成今日設定的 \(practiceManager.premiumDailyTarget) 題目標！")
             }
             .onAppear {
                 loadErrorWords()
@@ -108,43 +102,143 @@ public struct ReviewView: View {
             List {
                 ForEach(errorWords) { word in
                     Button(action: { selectedWord = word }) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(word.word)
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                // Scenario Breadcrumb & Topic / Subtopic
+                                Text(PersonalizedOnboardingPreferences.getScenarioBreadcrumb(topic: word.topic, subtopic: word.subtopic))
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.purple)
+                                
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Text(word.word)
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                                        .foregroundColor(.primary)
+                                    
+                                    // Difficulty & Part of Speech chips
+                                    HStack(spacing: 4) {
+                                        Text("Lv.\(word.difficulty)")
+                                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                                            .foregroundColor(.blue)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.blue.opacity(0.1))
+                                            .cornerRadius(6)
+                                        
+                                        if !word.partOfSpeech.isEmpty {
+                                            Text(word.partOfSpeech)
+                                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                                .foregroundColor(.secondary)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Color(.systemGray6))
+                                                .cornerRadius(6)
+                                        }
+                                    }
+                                }
                                 
                                 HStack(spacing: 8) {
-                                    Text(word.phonetic)
-                                        .font(.system(size: 13, weight: .medium, design: .serif))
-                                        .foregroundColor(.purple)
+                                    if !word.phonetic.isEmpty {
+                                        Text(word.phonetic)
+                                            .font(.system(size: 13, weight: .medium, design: .serif))
+                                            .foregroundColor(.purple)
+                                    }
                                     
                                     Text(word.translation)
                                         .font(.system(size: 14))
                                         .foregroundColor(.secondary)
+                                        .lineLimit(1)
                                 }
                             }
                             
                             Spacer()
                             
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.caption)
-                                Text("\(word.wrongCount) 次錯誤")
-                                    .font(.system(size: 12, weight: .bold))
+                            if word.wrongCount > 0 {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.caption)
+                                    Text("\(word.wrongCount) 次錯誤")
+                                        .font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.1))
+                                .cornerRadius(8)
+                            } else {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.caption)
+                                    Text("排程複習")
+                                        .font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
                             }
-                            .foregroundColor(.orange)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(8)
                         }
                         .padding(.vertical, 4)
                     }
                 }
             }
             .listStyle(InsetGroupedListStyle())
+            
+            // Bottom Action CTA
+            VStack(spacing: 0) {
+                Divider()
+                
+                Button(action: startReviewQuiz) {
+                    Text(quizButtonTitle)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [.purple, .blue],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(16)
+                        .shadow(color: Color.purple.opacity(0.3), radius: 8, x: 0, y: 4)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+            }
+            .background(Color(.systemGroupedBackground))
         }
+    }
+    
+    private var remainingQuota: Int {
+        if premiumManager.isPremium {
+            if practiceManager.premiumDailyTarget == -1 {
+                return 10
+            }
+            return max(0, practiceManager.premiumDailyTarget - practiceManager.todayCompletedCount)
+        }
+        return practiceManager.remainingFreeQuestions
+    }
+    
+    private var quizQuestionCount: Int {
+        let maxAllowed = remainingQuota
+        return min(errorWords.count, min(10, maxAllowed))
+    }
+    
+    private var quizButtonTitle: String {
+        if !premiumManager.isPremium && practiceManager.isDailyLimitReached {
+            return "解鎖 Premium 進行複習測驗 ➜"
+        } else if premiumManager.isPremium && practiceManager.isDailyLimitReached {
+            return "今日目標已達成（共 \(practiceManager.premiumDailyTarget) 題）"
+        } else {
+            return "開始複習測驗（共 \(quizQuestionCount) 題）➜"
+        }
+    }
+    
+    private var isTodayQuizCompleted: Bool {
+        DatabaseManager.shared.isTodayQuizCompleted()
     }
     
     private var emptyStateView: some View {
@@ -159,9 +253,9 @@ public struct ReviewView: View {
             }
             
             VStack(spacing: 8) {
-                Text("全部完成！")
+                Text("太棒了！目前無待複習單字")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("太棒了！錯題庫中沒有需要複習的單字。請繼續保持！")
+                Text("測驗中答錯或需要強化的單字，會自動收錄在智慧複習中心，依照記憶曲線排程複習。")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -342,10 +436,19 @@ public struct ReviewView: View {
             DatabaseManager.shared.incrementWrongCount(wordId: question.word.id)
         }
         quizResults.append((word: question.word, isCorrect: isCorrect))
+        _ = DailyPracticeManager.shared.recordCompletedQuestion(id: "review_\(question.word.id)")
     }
     
     private func handleNextReviewQuizQuestion() {
         if quizIndex < quizQuestions.count - 1 {
+            if !premiumManager.isPremium && practiceManager.isDailyLimitReached {
+                showPaywall = true
+                return
+            }
+            if premiumManager.isPremium && practiceManager.isDailyLimitReached {
+                showTargetReachedAlert = true
+                return
+            }
             selectedOption = nil
             isAnswered = false
             withAnimation(.easeInOut) {
@@ -368,7 +471,7 @@ public struct ReviewView: View {
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(correctCount == quizQuestions.count ? .green : .purple)
                 
-                Text("答對的單字已從錯題庫中移除或減少錯誤次數。")
+                Text("答對的單字已更新複習排程與紀錄。")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -384,12 +487,33 @@ public struct ReviewView: View {
                             Image(systemName: result.isCorrect ? "checkmark.circle.fill" : "arrow.clockwise")
                                 .foregroundColor(result.isCorrect ? .green : .orange)
                             
-                            VStack(alignment: .leading) {
-                                Text(result.word.word)
-                                    .font(.system(size: 16, weight: .bold))
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 6) {
+                                    Text(result.word.word)
+                                        .font(.system(size: 16, weight: .bold))
+                                    if !result.word.example.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        Button(action: {
+                                            SoundPlayer.shared.speakSentence(result.word.example)
+                                        }) {
+                                            Image(systemName: "speaker.wave.2.fill")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.purple)
+                                                .padding(4)
+                                                .background(Color.purple.opacity(0.1))
+                                                .clipShape(Circle())
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
                                 Text(result.word.translation)
                                     .font(.system(size: 13))
                                     .foregroundColor(.secondary)
+                                if !result.word.example.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text(result.word.example)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.purple.opacity(0.85))
+                                        .lineLimit(2)
+                                }
                             }
                             
                             Spacer()
@@ -410,20 +534,37 @@ public struct ReviewView: View {
                 .padding(.horizontal, 24)
             }
             
-            Button(action: {
-                withAnimation {
-                    showQuizMode = false
-                    showQuizResults = false
-                    loadErrorWords()
+            VStack(spacing: 12) {
+                Button(action: {
+                    withAnimation {
+                        showQuizMode = false
+                        showQuizResults = false
+                        loadErrorWords()
+                    }
+                }) {
+                    Text("返回智慧複習中心")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.purple)
+                        .cornerRadius(16)
                 }
-            }) {
-                Text("返回錯題庫")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.purple)
-                    .cornerRadius(16)
+                
+                if !premiumManager.isPremium {
+                    Button(action: {
+                        showPaywall = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "crown.fill")
+                                .foregroundColor(.orange)
+                            Text("升級 Premium 解鎖全單字庫與無限每日練習")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(.purple)
+                        }
+                        .padding(.vertical, 6)
+                    }
+                }
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
@@ -435,9 +576,27 @@ public struct ReviewView: View {
     }
     
     private func startReviewQuiz() {
+        if !premiumManager.isPremium && practiceManager.isDailyLimitReached {
+            showPaywall = true
+            return
+        }
+        if premiumManager.isPremium && practiceManager.isDailyLimitReached {
+            showTargetReachedAlert = true
+            return
+        }
         if errorWords.isEmpty { return }
         
-        let selectWords = errorWords.shuffled().prefix(10)
+        let count = quizQuestionCount
+        guard count > 0 else {
+            if premiumManager.isPremium {
+                showTargetReachedAlert = true
+            } else {
+                showPaywall = true
+            }
+            return
+        }
+        
+        let selectWords = errorWords.shuffled().prefix(count)
         var tempQuestions: [QuizQuestion] = []
         
         for word in selectWords {

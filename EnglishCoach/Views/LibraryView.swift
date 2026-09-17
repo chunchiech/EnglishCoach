@@ -4,6 +4,9 @@ public struct LibraryView: View {
     @State private var allWords: [Word] = []
     @State private var searchText = ""
     @State private var selectedWord: Word? = nil
+    @State private var showPaywall = false
+    
+    @StateObject private var premiumManager = PremiumManager.shared
     
     public init() {}
     
@@ -36,8 +39,30 @@ public struct LibraryView: View {
                 }
             }
             .navigationTitle("單字庫")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if !premiumManager.isPremium {
+                        Button(action: { showPaywall = true }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "crown.fill")
+                                    .font(.system(size: 12))
+                                Text("升級")
+                                    .font(.system(size: 13, weight: .bold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(LinearGradient(colors: [.purple, .orange], startPoint: .leading, endPoint: .trailing))
+                            .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
             .sheet(item: $selectedWord) { word in
                 cardReviewSheet(word: word)
+            }
+            .sheet(isPresented: $showPaywall) {
+                PremiumView()
             }
             .onAppear {
                 loadAllWords()
@@ -74,13 +99,20 @@ public struct LibraryView: View {
     private var wordList: some View {
         List {
             ForEach(filteredWords) { word in
-                Button(action: { selectedWord = word }) {
+                let isLocked = !premiumManager.isPremium && word.id > 300
+                Button(action: {
+                    if isLocked {
+                        showPaywall = true
+                    } else {
+                        selectedWord = word
+                    }
+                }) {
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 8) {
                                 Text(word.word)
                                     .font(.system(size: 17, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(isLocked ? .secondary : .primary)
                                 
                                 if word.learned {
                                     Text("已學習")
@@ -99,6 +131,20 @@ public struct LibraryView: View {
                                     .padding(.vertical, 2)
                                     .background(levelColor(word.level).opacity(0.1))
                                     .cornerRadius(4)
+                                
+                                if isLocked {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "lock.fill")
+                                            .font(.system(size: 9))
+                                        Text("Premium")
+                                            .font(.system(size: 10, weight: .bold))
+                                    }
+                                    .foregroundColor(.orange)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.orange.opacity(0.12))
+                                    .cornerRadius(4)
+                                }
                             }
                             
                             HStack(spacing: 6) {
@@ -109,7 +155,7 @@ public struct LibraryView: View {
                                 Text("•")
                                     .foregroundColor(.secondary)
                                 
-                                Text(word.translation)
+                                Text(isLocked ? "升級解鎖中文翻譯與例句" : word.translation)
                                     .font(.system(size: 13))
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
@@ -118,8 +164,12 @@ public struct LibraryView: View {
                         
                         Spacer()
                         
-                        // Performance indicators
-                        if word.correctCount > 0 || word.wrongCount > 0 {
+                        // Performance indicators or lock
+                        if isLocked {
+                            Image(systemName: "lock.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.orange)
+                        } else if word.correctCount > 0 || word.wrongCount > 0 {
                             HStack(spacing: 8) {
                                 if word.correctCount > 0 {
                                     Text("\(word.correctCount)✓")

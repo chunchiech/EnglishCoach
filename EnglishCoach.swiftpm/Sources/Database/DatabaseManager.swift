@@ -9,6 +9,7 @@ public class DatabaseManager {
         openDatabase()
         createTables()
         migrateDatabaseIfNeeded()
+        cleanupExtWordsIfNeeded()
         seedWordsIfNeeded()
         importToeicIfNeeded()
     }
@@ -50,7 +51,12 @@ public class DatabaseManager {
             interval_days INTEGER DEFAULT 0,
             repetition_count INTEGER DEFAULT 0,
             next_review_date TEXT,
-            level TEXT DEFAULT 'Beginner'
+            level TEXT DEFAULT 'Beginner',
+            difficulty INTEGER DEFAULT 1,
+            topic TEXT DEFAULT '',
+            subtopic TEXT DEFAULT '',
+            exam_tags TEXT DEFAULT 'TOEIC',
+            part_of_speech TEXT DEFAULT ''
         );
         """
         
@@ -68,8 +74,23 @@ public class DatabaseManager {
         return formatter.string(from: Date())
     }
     
-    private func insertWord(word: String, phonetic: String, translation: String, example: String, exampleTranslation: String, level: String = "Beginner") {
-        let insertStatementString = "INSERT INTO words (word, phonetic, translation, example, example_translation, level) VALUES (?, ?, ?, ?, ?, ?);"
+    private func insertWord(
+        word: String,
+        phonetic: String,
+        translation: String,
+        example: String,
+        exampleTranslation: String,
+        level: String = "Beginner",
+        difficulty: Int = 1,
+        topic: String = "",
+        subtopic: String = "",
+        examTags: String = "TOEIC",
+        partOfSpeech: String = ""
+    ) {
+        let insertStatementString = """
+        INSERT INTO words (word, phonetic, translation, example, example_translation, level, difficulty, topic, subtopic, exam_tags, part_of_speech)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
         var statement: OpaquePointer? = nil
         
         if sqlite3_prepare_v2(db, insertStatementString, -1, &statement, nil) == SQLITE_OK {
@@ -81,12 +102,42 @@ public class DatabaseManager {
             sqlite3_bind_text(statement, 4, example, -1, SQLITE_TRANSIENT)
             sqlite3_bind_text(statement, 5, exampleTranslation, -1, SQLITE_TRANSIENT)
             sqlite3_bind_text(statement, 6, level, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_int(statement, 7, Int32(difficulty))
+            sqlite3_bind_text(statement, 8, topic, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 9, subtopic, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 10, examTags, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 11, partOfSpeech, -1, SQLITE_TRANSIENT)
             
             if sqlite3_step(statement) != SQLITE_DONE {
                 // Ignore duplicate insert warnings silently during seeding / importing
             }
         } else {
             print("INSERT statement could not be prepared.")
+        }
+        sqlite3_finalize(statement)
+    }
+    
+    private func updateWordMetadata(
+        word: String,
+        difficulty: Int,
+        topic: String,
+        subtopic: String,
+        examTags: String,
+        partOfSpeech: String
+    ) {
+        let updateStatement = """
+        UPDATE words SET difficulty = ?, topic = ?, subtopic = ?, exam_tags = ?, part_of_speech = ? WHERE word = ?;
+        """
+        var statement: OpaquePointer? = nil
+        if sqlite3_prepare_v2(db, updateStatement, -1, &statement, nil) == SQLITE_OK {
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_int(statement, 1, Int32(difficulty))
+            sqlite3_bind_text(statement, 2, topic, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 3, subtopic, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 4, examTags, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 5, partOfSpeech, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 6, word, -1, SQLITE_TRANSIENT)
+            _ = sqlite3_step(statement)
         }
         sqlite3_finalize(statement)
     }
@@ -214,7 +265,9 @@ public class DatabaseManager {
         }
     }
     
-    private let SELECT_FIELDS = "id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count, easiness_factor, interval_days, repetition_count, next_review_date, level"
+    private let SELECT_FIELDS = "id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count, easiness_factor, interval_days, repetition_count, next_review_date, level, difficulty, topic, subtopic, exam_tags, part_of_speech"
+    private let kTodayWordsDatePrefix = "englishcoach_today_words_date_"
+    private let kTodayWordsIdsPrefix = "englishcoach_today_words_ids_"
     
     private func fetchWords(query: String, bindings: [String] = []) -> [Word] {
         var words: [Word] = []
@@ -259,6 +312,21 @@ public class DatabaseManager {
                 let levelPtr = sqlite3_column_text(statement, 14)
                 let level = levelPtr != nil ? String(cString: levelPtr!) : "Beginner"
                 
+                let difficultyVal = Int(sqlite3_column_int(statement, 15))
+                let difficulty = difficultyVal > 0 ? difficultyVal : 1
+                
+                let topicPtr = sqlite3_column_text(statement, 16)
+                let topic = topicPtr != nil ? String(cString: topicPtr!) : ""
+                
+                let subtopicPtr = sqlite3_column_text(statement, 17)
+                let subtopic = subtopicPtr != nil ? String(cString: subtopicPtr!) : ""
+                
+                let examTagsRaw = sqlite3_column_text(statement, 18) != nil ? String(cString: sqlite3_column_text(statement, 18)!) : "TOEIC"
+                let examTags = examTagsRaw.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                
+                let posPtr = sqlite3_column_text(statement, 19)
+                let partOfSpeech = posPtr != nil ? String(cString: posPtr!) : ""
+                
                 words.append(Word(
                     id: id,
                     word: word,
@@ -274,7 +342,12 @@ public class DatabaseManager {
                     intervalDays: intervalDays,
                     repetitionCount: repetitionCount,
                     nextReviewDate: nextReviewDate,
-                    level: level
+                    level: level,
+                    difficulty: difficulty,
+                    topic: topic,
+                    subtopic: subtopic,
+                    examTags: examTags.isEmpty ? ["TOEIC"] : examTags,
+                    partOfSpeech: partOfSpeech
                 ))
             }
         } else {
@@ -288,46 +361,151 @@ public class DatabaseManager {
         return fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words ORDER BY word ASC;")
     }
     
-    public func getTodayWords() -> [Word] {
+    @MainActor
+    public func getTodayWords(limit: Int? = nil, isPremium: Bool? = nil) -> [Word] {
+        let verifiedPremium = isPremium ?? PremiumManager.shared.isPremium
+        return getTodayWordsInternal(limit: limit, isPremium: verifiedPremium)
+    }
+    
+    public func getTodayWordsInternal(limit: Int? = nil, isPremium: Bool) -> [Word] {
+        let targetCount: Int
+        if let limit = limit {
+            targetCount = limit
+        } else if isPremium {
+            let savedTarget = UserDefaults.standard.object(forKey: "premium_daily_target") as? Int ?? 10
+            targetCount = savedTarget == -1 ? 50 : savedTarget
+        } else {
+            targetCount = 10
+        }
+        
         let today = getTodayDateString()
-        let level = UserDefaults.standard.string(forKey: "user_level") ?? "Beginner"
+        let prefs = PersonalizedOnboardingPreferences.shared
+        let recommendedLvl = prefs.recommendedLevel.isEmpty ? (UserDefaults.standard.string(forKey: "user_level") ?? "Beginner") : prefs.recommendedLevel
+        let effectiveLevel = isPremium ? recommendedLvl : "Beginner"
+        let maxIdClause = isPremium ? "" : " AND id <= 300"
         
-        var words = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned_date = ? AND level = ?;", bindings: [today, level])
+        let dateKey = "\(kTodayWordsDatePrefix)\(effectiveLevel)"
+        let idsKey = "\(kTodayWordsIdsPrefix)\(effectiveLevel)"
         
-        if words.count < 20 {
-            let needed = 20 - words.count
+        let savedDate = UserDefaults.standard.string(forKey: dateKey)
+        var selectedIds: [Int] = []
+        if savedDate == today {
+            selectedIds = UserDefaults.standard.array(forKey: idsKey) as? [Int] ?? []
+        }
+        
+        var words: [Word] = []
+        if !selectedIds.isEmpty {
+            let placeholders = selectedIds.map { _ in "?" }.joined(separator: ",")
+            let query = "SELECT \(SELECT_FIELDS) FROM words WHERE id IN (\(placeholders));"
+            let fetched = fetchWords(query: query, bindings: selectedIds.map(String.init))
+            let dict = Dictionary(uniqueKeysWithValues: fetched.map { ($0.id, $0) })
+            words = selectedIds.compactMap { dict[$0] }
+        }
+        
+        if words.count < targetCount {
+            var selectedIdSet = Set(words.map { $0.id })
             
-            // 1. Fetch unlearned words matching this level
-            var unlearned = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0 AND level = ? LIMIT ?;", bindings: [level, String(needed)])
+            // Tier 1: Due Review (SM-2 Spaced Repetition) Absolute Priority
+            // k_due = min(dueCount, targetCount - words.count)
+            // If dueCount >= 10, all 10 words can be Due Review words with zero artificial caps.
+            let stillNeededForDue = targetCount - words.count
+            let dueQuery = "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1 AND next_review_date <= ?\(maxIdClause) ORDER BY next_review_date ASC, wrong_count DESC;"
+            var dueWords = fetchWords(query: dueQuery, bindings: [today])
+            dueWords.removeAll { selectedIdSet.contains($0.id) }
             
-            // 2. If we still need more, fetch learned words of this level with highest mistakes
-            if unlearned.count < needed {
-                let stillNeeded = needed - unlearned.count
-                let reviewWords = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1 AND level = ? AND (learned_date IS NULL OR learned_date != ?) ORDER BY wrong_count DESC, correct_count ASC LIMIT ?;", bindings: [level, today, String(stillNeeded)])
-                unlearned.append(contentsOf: reviewWords)
+            if !dueWords.isEmpty {
+                let toAddCount = min(dueWords.count, stillNeededForDue)
+                let dueToAdd = Array(dueWords.prefix(toAddCount))
+                words.append(contentsOf: dueToAdd)
+                for w in dueToAdd {
+                    selectedIdSet.insert(w.id)
+                }
             }
             
-            // 3. If we STILL need more, fetch unlearned words from any level (fallback)
-            if unlearned.count < needed {
-                let stillNeeded = needed - unlearned.count
-                let fallbackWords = fetchWords(query: "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0 AND level != ? LIMIT ?;", bindings: [level, String(stillNeeded)])
-                unlearned.append(contentsOf: fallbackWords)
+            // Tier 2: Weighted Sampling without replacement for remaining slots from Unlearned Pool
+            // Higher weight candidate words have a higher tendency to be selected,
+            // using A-Res weighted reservoir sampling without replacement.
+            if words.count < targetCount {
+                let remainingSlot = targetCount - words.count
+                
+                let unlearnedQuery = "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0\(maxIdClause);"
+                var unlearnedCandidates = fetchWords(query: unlearnedQuery)
+                unlearnedCandidates.removeAll { selectedIdSet.contains($0.id) }
+                
+                if !unlearnedCandidates.isEmpty {
+                    var scoredCandidates: [(word: Word, key: Double)] = []
+                    for candidate in unlearnedCandidates {
+                        let w = prefs.calculateTotalWeight(
+                            difficulty: candidate.difficulty,
+                            topic: candidate.topic,
+                            subtopic: candidate.subtopic
+                        )
+                        // A-Res algorithm key: k_i = u_i ^ (1 / w_i)
+                        let u = Double.random(in: 0.0001...0.9999)
+                        let key = pow(u, 1.0 / max(0.01, w))
+                        scoredCandidates.append((word: candidate, key: key))
+                    }
+                    
+                    // Sort descending by A-Res key
+                    scoredCandidates.sort { $0.key > $1.key }
+                    
+                    let sampled = scoredCandidates.prefix(remainingSlot).map { $0.word }
+                    words.append(contentsOf: sampled)
+                    for w in sampled {
+                        selectedIdSet.insert(w.id)
+                    }
+                }
             }
             
-            // 4. Mark these newly selected words as today's words
-            for i in 0..<unlearned.count {
-                var w = unlearned[i]
-                w.learned = true
-                w.learnedDate = today
-                updateWordLearnedState(wordId: w.id, learned: true, date: today)
-                words.append(w)
+            // Tier 3: Fallback if unlearned candidate pool is exhausted (all words learned)
+            if words.count < targetCount {
+                let remainingSlot = targetCount - words.count
+                let fallbackQuery = "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1\(maxIdClause) ORDER BY wrong_count DESC, correct_count ASC;"
+                var fallbackWords = fetchWords(query: fallbackQuery)
+                fallbackWords.removeAll { selectedIdSet.contains($0.id) }
+                let fallbackToAdd = Array(fallbackWords.prefix(remainingSlot))
+                words.append(contentsOf: fallbackToAdd)
             }
+            
+            // Save the stable daily selected word IDs without prematurely mutating SQLite
+            UserDefaults.standard.set(today, forKey: dateKey)
+            UserDefaults.standard.set(words.map { $0.id }, forKey: idsKey)
+        }
+        
+        if words.count > targetCount {
+            words = Array(words.prefix(targetCount))
         }
         
         return words
     }
     
+    public func markWordAsLearned(wordId: Int) {
+        let today = getTodayDateString()
+        let nextReview = calculateNextReviewDate(afterDays: 1)
+        let query = """
+        UPDATE words SET 
+            learned = 1, 
+            learned_date = COALESCE(learned_date, ?), 
+            next_review_date = COALESCE(next_review_date, ?),
+            interval_days = CASE WHEN interval_days = 0 THEN 1 ELSE interval_days END,
+            repetition_count = CASE WHEN repetition_count = 0 THEN 1 ELSE repetition_count END
+        WHERE id = ?;
+        """
+        var statement: OpaquePointer? = nil
+        if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(statement, 1, today, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 2, nextReview, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_int(statement, 3, Int32(wordId))
+            if sqlite3_step(statement) != SQLITE_DONE {
+                print("Failed to mark word as learned")
+            }
+        }
+        sqlite3_finalize(statement)
+    }
+    
     public func updateWordLearnedState(wordId: Int, learned: Bool, date: String?) {
+        let nextReview = calculateNextReviewDate(afterDays: 1)
         let query = "UPDATE words SET learned = ?, learned_date = ?, next_review_date = COALESCE(next_review_date, ?) WHERE id = ?;"
         var statement: OpaquePointer? = nil
         if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
@@ -335,7 +513,7 @@ public class DatabaseManager {
             sqlite3_bind_int(statement, 1, learned ? 1 : 0)
             if let date = date {
                 sqlite3_bind_text(statement, 2, date, -1, SQLITE_TRANSIENT)
-                sqlite3_bind_text(statement, 3, date, -1, SQLITE_TRANSIENT)
+                sqlite3_bind_text(statement, 3, nextReview, -1, SQLITE_TRANSIENT)
             } else {
                 sqlite3_bind_null(statement, 2)
                 sqlite3_bind_null(statement, 3)
@@ -349,11 +527,90 @@ public class DatabaseManager {
         sqlite3_finalize(statement)
     }
     
+    // MARK: - Quiz Session Commit & Status
+    private let kTodayQuizCompletedDate = "today_quiz_completed_date"
+    private let kTodayLearningCompletedDate = "today_learning_completed_date"
+    
+    public func isTodayQuizCompleted() -> Bool {
+        let today = getTodayDateString()
+        return UserDefaults.standard.string(forKey: kTodayQuizCompletedDate) == today
+    }
+    
+    public func markTodayQuizCompleted() {
+        let today = getTodayDateString()
+        UserDefaults.standard.set(today, forKey: kTodayQuizCompletedDate)
+    }
+    
+    public func isTodayLearningCompleted() -> Bool {
+        let today = getTodayDateString()
+        return UserDefaults.standard.string(forKey: kTodayLearningCompletedDate) == today
+    }
+    
+    public func markTodayLearningCompleted() {
+        let today = getTodayDateString()
+        UserDefaults.standard.set(today, forKey: kTodayLearningCompletedDate)
+    }
+    
+    public func resetDailyStatusForTesting() {
+        UserDefaults.standard.removeObject(forKey: kTodayQuizCompletedDate)
+        UserDefaults.standard.removeObject(forKey: kTodayLearningCompletedDate)
+    }
+    
+    @discardableResult
+    public func commitQuizSession(results: [(word: Word, isCorrect: Bool)]) -> Bool {
+        guard !results.isEmpty else { return false }
+        let today = getTodayDateString()
+        
+        sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
+        
+        for (word, isCorrect) in results {
+            if isCorrect {
+                let query = "UPDATE words SET correct_count = correct_count + 1, learned = 1, learned_date = COALESCE(learned_date, ?) WHERE id = ?;"
+                var statement: OpaquePointer? = nil
+                if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
+                    let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                    sqlite3_bind_text(statement, 1, today, -1, SQLITE_TRANSIENT)
+                    sqlite3_bind_int(statement, 2, Int32(word.id))
+                    if sqlite3_step(statement) != SQLITE_DONE {
+                        print("Failed to update correct count in transaction for word \(word.id)")
+                    }
+                }
+                sqlite3_finalize(statement)
+                updateSM2(wordId: word.id, isCorrect: true)
+            } else {
+                let query = "UPDATE words SET wrong_count = wrong_count + 1, learned = 1, learned_date = COALESCE(learned_date, ?) WHERE id = ?;"
+                var statement: OpaquePointer? = nil
+                if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
+                    let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                    sqlite3_bind_text(statement, 1, today, -1, SQLITE_TRANSIENT)
+                    sqlite3_bind_int(statement, 2, Int32(word.id))
+                    if sqlite3_step(statement) != SQLITE_DONE {
+                        print("Failed to update wrong count in transaction for word \(word.id)")
+                    }
+                }
+                sqlite3_finalize(statement)
+                updateSM2(wordId: word.id, isCorrect: false)
+            }
+        }
+        
+        if sqlite3_exec(db, "COMMIT;", nil, nil, nil) != SQLITE_OK {
+            print("Failed to commit quiz session transaction")
+            sqlite3_exec(db, "ROLLBACK;", nil, nil, nil)
+            return false
+        }
+        
+        markTodayQuizCompleted()
+        return true
+    }
+    
     public func incrementCorrectCount(wordId: Int) {
-        let query = "UPDATE words SET correct_count = correct_count + 1 WHERE id = ?;"
+        let today = getTodayDateString()
+        let query = "UPDATE words SET correct_count = correct_count + 1, learned = 1, learned_date = COALESCE(learned_date, ?) WHERE id = ?;"
         var statement: OpaquePointer? = nil
         if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_int(statement, 1, Int32(wordId))
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(statement, 1, today, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_int(statement, 2, Int32(wordId))
             if sqlite3_step(statement) != SQLITE_DONE {
                 print("Failed to increment correct count")
             }
@@ -363,10 +620,13 @@ public class DatabaseManager {
     }
     
     public func incrementWrongCount(wordId: Int) {
-        let query = "UPDATE words SET wrong_count = wrong_count + 1 WHERE id = ?;"
+        let today = getTodayDateString()
+        let query = "UPDATE words SET wrong_count = wrong_count + 1, learned = 1, learned_date = COALESCE(learned_date, ?) WHERE id = ?;"
         var statement: OpaquePointer? = nil
         if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_int(statement, 1, Int32(wordId))
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(statement, 1, today, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_int(statement, 2, Int32(wordId))
             if sqlite3_step(statement) != SQLITE_DONE {
                 print("Failed to increment wrong count")
             }
@@ -522,7 +782,12 @@ public class DatabaseManager {
             ("interval_days", "INTEGER DEFAULT 0"),
             ("repetition_count", "INTEGER DEFAULT 0"),
             ("next_review_date", "TEXT"),
-            ("level", "TEXT DEFAULT 'Beginner'")
+            ("level", "TEXT DEFAULT 'Beginner'"),
+            ("difficulty", "INTEGER DEFAULT 1"),
+            ("topic", "TEXT DEFAULT ''"),
+            ("subtopic", "TEXT DEFAULT ''"),
+            ("exam_tags", "TEXT DEFAULT 'TOEIC'"),
+            ("part_of_speech", "TEXT DEFAULT ''")
         ]
         
         for (columnName, type) in columnsToAdd {
@@ -561,6 +826,85 @@ public class DatabaseManager {
         return exists
     }
     
+    // MARK: - Legacy -ext anomalous word cleanup & migration
+    public func cleanupExtWordsIfNeeded() {
+        var extCount = 0
+        let checkQuery = "SELECT COUNT(*) FROM words WHERE word LIKE '%-ext%';"
+        var statement: OpaquePointer? = nil
+        if sqlite3_prepare_v2(db, checkQuery, -1, &statement, nil) == SQLITE_OK {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                extCount = Int(sqlite3_column_int(statement, 0))
+            }
+        }
+        sqlite3_finalize(statement)
+        
+        guard extCount > 0 else { return }
+        print("Detected \(extCount) legacy -ext anomalous records. Running safe migration...")
+        
+        // 1. Fetch any -ext words that had active learning records (learned == 1 or wrong_count > 0 or correct_count > 0)
+        let queryLearned = "SELECT word, learned, learned_date, correct_count, wrong_count, easiness_factor, interval_days, repetition_count, next_review_date FROM words WHERE word LIKE '%-ext%' AND (learned = 1 OR wrong_count > 0 OR correct_count > 0);"
+        var learnedExtWords: [(canonical: String, learned: Int, learnedDate: String?, correct: Int, wrong: Int, ef: Double, interval: Int, rep: Int, nextDate: String?)] = []
+        
+        if sqlite3_prepare_v2(db, queryLearned, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                let w = String(cString: sqlite3_column_text(statement, 0)!)
+                // Extract canonical word (strip -ext<digits>)
+                let canonical = w.replacingOccurrences(of: #"-ext\d+$"#, with: "", options: .regularExpression)
+                let l = Int(sqlite3_column_int(statement, 1))
+                let ld = sqlite3_column_text(statement, 2).map { String(cString: $0) }
+                let cc = Int(sqlite3_column_int(statement, 3))
+                let wc = Int(sqlite3_column_int(statement, 4))
+                let ef = sqlite3_column_double(statement, 5)
+                let interval = Int(sqlite3_column_int(statement, 6))
+                let rep = Int(sqlite3_column_int(statement, 7))
+                let nrd = sqlite3_column_text(statement, 8).map { String(cString: $0) }
+                learnedExtWords.append((canonical, l, ld, cc, wc, ef, interval, rep, nrd))
+            }
+        }
+        sqlite3_finalize(statement)
+        
+        sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
+        
+        // 2. Merge progress into canonical words if applicable
+        for item in learnedExtWords {
+            let mergeQuery = """
+            UPDATE words SET 
+                learned = MAX(learned, ?),
+                learned_date = COALESCE(learned_date, ?),
+                correct_count = correct_count + ?,
+                wrong_count = wrong_count + ?,
+                easiness_factor = CASE WHEN ? < easiness_factor THEN ? ELSE easiness_factor END,
+                interval_days = MAX(interval_days, ?),
+                repetition_count = MAX(repetition_count, ?),
+                next_review_date = COALESCE(next_review_date, ?)
+            WHERE word = ?;
+            """
+            var mergeStmt: OpaquePointer? = nil
+            if sqlite3_prepare_v2(db, mergeQuery, -1, &mergeStmt, nil) == SQLITE_OK {
+                let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                sqlite3_bind_int(mergeStmt, 1, Int32(item.learned))
+                if let ld = item.learnedDate { sqlite3_bind_text(mergeStmt, 2, ld, -1, SQLITE_TRANSIENT) } else { sqlite3_bind_null(mergeStmt, 2) }
+                sqlite3_bind_int(mergeStmt, 3, Int32(item.correct))
+                sqlite3_bind_int(mergeStmt, 4, Int32(item.wrong))
+                sqlite3_bind_double(mergeStmt, 5, item.ef)
+                sqlite3_bind_double(mergeStmt, 6, item.ef)
+                sqlite3_bind_int(mergeStmt, 7, Int32(item.interval))
+                sqlite3_bind_int(mergeStmt, 8, Int32(item.rep))
+                if let nrd = item.nextDate { sqlite3_bind_text(mergeStmt, 9, nrd, -1, SQLITE_TRANSIENT) } else { sqlite3_bind_null(mergeStmt, 9) }
+                sqlite3_bind_text(mergeStmt, 10, item.canonical, -1, SQLITE_TRANSIENT)
+                
+                sqlite3_step(mergeStmt)
+            }
+            sqlite3_finalize(mergeStmt)
+        }
+        
+        // 3. Delete all -ext records from words table
+        sqlite3_exec(db, "DELETE FROM words WHERE word LIKE '%-ext%';", nil, nil, nil)
+        sqlite3_exec(db, "COMMIT;", nil, nil, nil)
+        
+        print("Successfully cleaned up -ext records and preserved all learning data.")
+    }
+    
     // MARK: - CSV Import Logic
     private func importToeicIfNeeded() {
         var count = 0
@@ -574,9 +918,17 @@ public class DatabaseManager {
         }
         sqlite3_finalize(statement)
         
-        // Seed database only contains 100 entries. If database does not contain TOEIC words (usually 3000), we run the importer.
-        if count < 2000 {
-            print("TOEIC words not found or incomplete (current count: \(count)). Importing 3000 words...")
+        var metaCount = 0
+        if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM words WHERE topic != '' AND topic IS NOT NULL;", -1, &statement, nil) == SQLITE_OK {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                metaCount = Int(sqlite3_column_int(statement, 0))
+            }
+        }
+        sqlite3_finalize(statement)
+        
+        // Ensure all 3,000 TOEIC words are imported and metadata is enriched
+        if count < 3000 || metaCount < 3000 {
+            print("TOEIC words incomplete (count: \(count), metaCount: \(metaCount)). Importing/enriching 3000 words...")
             importToeicVocabulary()
         }
     }
@@ -609,14 +961,41 @@ public class DatabaseManager {
                     let example = fields[3]
                     let exampleTranslation = fields[4]
                     let level = fields[5]
+                    let difficulty = fields.count >= 11 ? (Int(fields[6]) ?? 1) : 1
+                    let topic = fields.count >= 11 ? fields[7] : ""
+                    let subtopic = fields.count >= 11 ? fields[8] : ""
+                    let examTags = fields.count >= 11 ? fields[9] : "TOEIC"
+                    let pos = fields.count >= 11 ? fields[10] : ""
                     
-                    insertWord(word: word, phonetic: phonetic, translation: translation, example: example, exampleTranslation: exampleTranslation, level: level)
+                    insertWord(
+                        word: word,
+                        phonetic: phonetic,
+                        translation: translation,
+                        example: example,
+                        exampleTranslation: exampleTranslation,
+                        level: level,
+                        difficulty: difficulty,
+                        topic: topic,
+                        subtopic: subtopic,
+                        examTags: examTags,
+                        partOfSpeech: pos
+                    )
+                    
+                    // In-place metadata enrichment for existing records
+                    updateWordMetadata(
+                        word: word,
+                        difficulty: difficulty,
+                        topic: topic,
+                        subtopic: subtopic,
+                        examTags: examTags,
+                        partOfSpeech: pos
+                    )
                     count += 1
                 }
             }
             
             sqlite3_exec(db, "COMMIT;", nil, nil, nil)
-            print("Successfully imported \(count) TOEIC words.")
+            print("Successfully imported/enriched \(count) TOEIC words with metadata.")
         } catch {
             print("Failed to read TOEIC CSV: \(error)")
         }

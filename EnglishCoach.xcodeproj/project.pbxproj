@@ -7,15 +7,26 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		09D052B8E557B0292BEAE623 /* NotificationOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2D3582F7F24A99DBD357AB /* NotificationOnboardingView.swift */; };
 		0DD2BE6C83FB93778C5589E6 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981551AECEA7922DCB308CE8 /* LibraryView.swift */; };
+		18BF1A4E5F4BAB35404E26F0 /* PersonalizedOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6245666C3222B638198206EA /* PersonalizedOnboardingView.swift */; };
 		1F35321366C6FF07F030EC40 /* ReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05C501346D0CF616B7BB0085 /* ReviewView.swift */; };
+		240DB7422ABFDB01F2544D65 /* DailyPracticeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20980B9DE5224223223E5174 /* DailyPracticeManager.swift */; };
 		2CA6619F01A8619C9694C419 /* DailyLearningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED5335C57AD5C97351CB3F4 /* DailyLearningView.swift */; };
 		5B71EE51CE78560419A4895E /* toeic_3000.csv in Resources */ = {isa = PBXBuildFile; fileRef = 2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */; };
+		7CBAC0AB268596DB572D741E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56854FFCF4EE110F504B236D /* SettingsView.swift */; };
+		7D6F089A2526B3F3B8D0B964 /* EnglishCoach.storekit in Resources */ = {isa = PBXBuildFile; fileRef = C4E5AA6E675657B47B14BB76 /* EnglishCoach.storekit */; };
+		83769B4B5397CC345BD737F4 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25C30ECAF199003E37CC3F6 /* NotificationManager.swift */; };
+		899BC2F68B6E637A96B97819 /* PremiumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCF3194105683C59007F955 /* PremiumView.swift */; };
 		89BA6DE21276CCE2AEF356C3 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00868CA72DB0CC07E2CB2BB /* App.swift */; };
+		90D5A50181F40B63FAD5D0E2 /* PlacementTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677D208918F61C72F5EBBAB9 /* PlacementTestView.swift */; };
 		993E91EF283F86F1B15C8461 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482D169515229EA7A557BC74 /* DashboardView.swift */; };
 		99576B11196E88677029DDEA /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F90F1690D7128D5DFF4EB8 /* MainTabView.swift */; };
+		9DD4C7A7887AF2561FF2F955 /* PersonalizedOnboardingPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BA3D5167A96CAFCD9DFCF3E /* PersonalizedOnboardingPreferences.swift */; };
 		A76E7865750C4EBC0FB63BFB /* WordCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7750245D06DE6393E0A60C5D /* WordCardView.swift */; };
+		AA36E4EC3E7D3DF2172E5AD3 /* PlacementQuestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B2D0C89FE545EBAC5CD886D /* PlacementQuestion.swift */; };
 		B234044ACC2794E3FFE052BD /* SoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D05365363BBFC501DADDAD /* SoundPlayer.swift */; };
+		B48B8BB128A0EDA70FBC2C7C /* PremiumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4434DC84CBC15302CFDB071C /* PremiumManager.swift */; };
 		B8063F9940D5D68AEB8FAD9B /* ProgressRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 741DE1B5CBC5DE284696EBF7 /* ProgressRing.swift */; };
 		B8B6B48FD75AB6A833404A8C /* QuizView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F372718540E9F113946EFF7C /* QuizView.swift */; };
 		F159F68CA0D83BA022FA7F05 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 92F463A39CFB9423B1901974 /* Assets.xcassets */; };
@@ -25,8 +36,17 @@
 
 /* Begin PBXFileReference section */
 		05C501346D0CF616B7BB0085 /* ReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewView.swift; sourceTree = "<group>"; };
-		2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */ = {isa = PBXFileReference; path = toeic_3000.csv; sourceTree = "<group>"; };
+		0BA3D5167A96CAFCD9DFCF3E /* PersonalizedOnboardingPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalizedOnboardingPreferences.swift; sourceTree = "<group>"; };
+		0FCF3194105683C59007F955 /* PremiumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumView.swift; sourceTree = "<group>"; };
+		1E2D3582F7F24A99DBD357AB /* NotificationOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationOnboardingView.swift; sourceTree = "<group>"; };
+		20980B9DE5224223223E5174 /* DailyPracticeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPracticeManager.swift; sourceTree = "<group>"; };
+		2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = toeic_3000.csv; sourceTree = "<group>"; };
+		4434DC84CBC15302CFDB071C /* PremiumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumManager.swift; sourceTree = "<group>"; };
 		482D169515229EA7A557BC74 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		4B2D0C89FE545EBAC5CD886D /* PlacementQuestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementQuestion.swift; sourceTree = "<group>"; };
+		56854FFCF4EE110F504B236D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		6245666C3222B638198206EA /* PersonalizedOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalizedOnboardingView.swift; sourceTree = "<group>"; };
+		677D208918F61C72F5EBBAB9 /* PlacementTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementTestView.swift; sourceTree = "<group>"; };
 		741DE1B5CBC5DE284696EBF7 /* ProgressRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRing.swift; sourceTree = "<group>"; };
 		7750245D06DE6393E0A60C5D /* WordCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordCardView.swift; sourceTree = "<group>"; };
 		7CFD81313DDB07B03797455D /* Word.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Word.swift; sourceTree = "<group>"; };
@@ -37,8 +57,10 @@
 		A8D05365363BBFC501DADDAD /* SoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundPlayer.swift; sourceTree = "<group>"; };
 		AED5335C57AD5C97351CB3F4 /* DailyLearningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLearningView.swift; sourceTree = "<group>"; };
 		B0F90F1690D7128D5DFF4EB8 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		C25C30ECAF199003E37CC3F6 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		C4E5AA6E675657B47B14BB76 /* EnglishCoach.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = EnglishCoach.storekit; sourceTree = "<group>"; };
 		F372718540E9F113946EFF7C /* QuizView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizView.swift; sourceTree = "<group>"; };
-		F82FA1F03293BF5E590C6523 /* EnglishCoach.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EnglishCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F82FA1F03293BF5E590C6523 /* EnglishCoach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EnglishCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -61,9 +83,22 @@
 		2700C7A51E65D28F7557FA77 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				20980B9DE5224223223E5174 /* DailyPracticeManager.swift */,
+				C25C30ECAF199003E37CC3F6 /* NotificationManager.swift */,
+				4434DC84CBC15302CFDB071C /* PremiumManager.swift */,
 				A8D05365363BBFC501DADDAD /* SoundPlayer.swift */,
 			);
 			path = Utils;
+			sourceTree = "<group>";
+		};
+		3BE8C82C562B79E742DEEFB1 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				0BA3D5167A96CAFCD9DFCF3E /* PersonalizedOnboardingPreferences.swift */,
+				6245666C3222B638198206EA /* PersonalizedOnboardingView.swift */,
+				677D208918F61C72F5EBBAB9 /* PlacementTestView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		6F702CD34ACBAC5D836F153F = {
@@ -77,6 +112,7 @@
 		8B6C8A43EB4E627994C60D54 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				4B2D0C89FE545EBAC5CD886D /* PlacementQuestion.swift */,
 				7CFD81313DDB07B03797455D /* Word.swift */,
 			);
 			path = Models;
@@ -93,6 +129,7 @@
 		A323344D8F8EDC6847F5C4F9 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				C4E5AA6E675657B47B14BB76 /* EnglishCoach.storekit */,
 				2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */,
 			);
 			path = Resources;
@@ -105,10 +142,14 @@
 				482D169515229EA7A557BC74 /* DashboardView.swift */,
 				981551AECEA7922DCB308CE8 /* LibraryView.swift */,
 				B0F90F1690D7128D5DFF4EB8 /* MainTabView.swift */,
+				1E2D3582F7F24A99DBD357AB /* NotificationOnboardingView.swift */,
+				0FCF3194105683C59007F955 /* PremiumView.swift */,
 				F372718540E9F113946EFF7C /* QuizView.swift */,
 				05C501346D0CF616B7BB0085 /* ReviewView.swift */,
+				56854FFCF4EE110F504B236D /* SettingsView.swift */,
 				7750245D06DE6393E0A60C5D /* WordCardView.swift */,
 				23626BFDB8AA064BEDA3E7BA /* Components */,
+				3BE8C82C562B79E742DEEFB1 /* Onboarding */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -155,7 +196,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					9A703759BCC344E67CCDB350 = {
 						DevelopmentTeam = 2P8SRV3VG2;
@@ -188,6 +229,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F159F68CA0D83BA022FA7F05 /* Assets.xcassets in Resources */,
+				7D6F089A2526B3F3B8D0B964 /* EnglishCoach.storekit in Resources */,
 				5B71EE51CE78560419A4895E /* toeic_3000.csv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -201,13 +243,23 @@
 			files = (
 				89BA6DE21276CCE2AEF356C3 /* App.swift in Sources */,
 				2CA6619F01A8619C9694C419 /* DailyLearningView.swift in Sources */,
+				240DB7422ABFDB01F2544D65 /* DailyPracticeManager.swift in Sources */,
 				993E91EF283F86F1B15C8461 /* DashboardView.swift in Sources */,
 				FCB13D56792F4C83390106E1 /* DatabaseManager.swift in Sources */,
 				0DD2BE6C83FB93778C5589E6 /* LibraryView.swift in Sources */,
 				99576B11196E88677029DDEA /* MainTabView.swift in Sources */,
+				83769B4B5397CC345BD737F4 /* NotificationManager.swift in Sources */,
+				09D052B8E557B0292BEAE623 /* NotificationOnboardingView.swift in Sources */,
+				9DD4C7A7887AF2561FF2F955 /* PersonalizedOnboardingPreferences.swift in Sources */,
+				18BF1A4E5F4BAB35404E26F0 /* PersonalizedOnboardingView.swift in Sources */,
+				AA36E4EC3E7D3DF2172E5AD3 /* PlacementQuestion.swift in Sources */,
+				90D5A50181F40B63FAD5D0E2 /* PlacementTestView.swift in Sources */,
+				B48B8BB128A0EDA70FBC2C7C /* PremiumManager.swift in Sources */,
+				899BC2F68B6E637A96B97819 /* PremiumView.swift in Sources */,
 				B8063F9940D5D68AEB8FAD9B /* ProgressRing.swift in Sources */,
 				B8B6B48FD75AB6A833404A8C /* QuizView.swift in Sources */,
 				1F35321366C6FF07F030EC40 /* ReviewView.swift in Sources */,
+				7CBAC0AB268596DB572D741E /* SettingsView.swift in Sources */,
 				B234044ACC2794E3FFE052BD /* SoundPlayer.swift in Sources */,
 				F4437091189F0E4AA84AADEA /* Word.swift in Sources */,
 				A76E7865750C4EBC0FB63BFB /* WordCardView.swift in Sources */,
@@ -223,9 +275,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 2P8SRV3VG2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "EnglishCoach - 多益單字與口說教練";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -234,7 +286,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.andy.EnglishCoach;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -247,9 +299,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 2P8SRV3VG2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "EnglishCoach - 多益單字與口說教練";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -258,7 +310,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.andy.EnglishCoach;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -300,8 +352,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 2P8SRV3VG2;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -321,6 +375,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -362,8 +417,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2P8SRV3VG2;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -376,6 +433,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;

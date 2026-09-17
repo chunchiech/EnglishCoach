@@ -17,6 +17,16 @@ targets:
       INFOPLIST_KEY_UILaunchScreen_Generation: true
       INFOPLIST_KEY_UIRequiresFullScreen: true
       INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
-      MARKETING_VERSION: "1.0"
-      CURRENT_PROJECT_VERSION: "1"
+      INFOPLIST_KEY_CFBundleDisplayName: "EnglishCoach - 多益單字與口說教練"
+      MARKETING_VERSION: "1.0.2"
+      CURRENT_PROJECT_VERSION: "3"
+schemes:
+  EnglishCoach:
+    build:
+      targets:
+        EnglishCoach: all
+    run:
+      config: Debug
+      storeKitConfiguration: EnglishCoach/Resources/EnglishCoach.storekit
+
 

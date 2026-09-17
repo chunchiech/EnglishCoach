@@ -2,10 +2,31 @@ import SwiftUI
 
 public struct WordCardView: View {
     public let word: Word
-    @State private var isFlipped = false
+    @Binding private var externalIsFlipped: Bool
+    @State private var internalIsFlipped = false
+    private let hasExternalBinding: Bool
+    @ObservedObject private var soundPlayer = SoundPlayer.shared
     
-    public init(word: Word) {
+    private var isFlipped: Bool {
+        get { hasExternalBinding ? externalIsFlipped : internalIsFlipped }
+        nonmutating set {
+            if hasExternalBinding {
+                externalIsFlipped = newValue
+            } else {
+                internalIsFlipped = newValue
+            }
+        }
+    }
+    
+    public init(word: Word, isFlipped: Binding<Bool>? = nil) {
         self.word = word
+        if let binding = isFlipped {
+            self._externalIsFlipped = binding
+            self.hasExternalBinding = true
+        } else {
+            self._externalIsFlipped = .constant(false)
+            self.hasExternalBinding = false
+        }
     }
     
     public var body: some View {
@@ -64,6 +85,16 @@ public struct WordCardView: View {
                         .cornerRadius(20)
                 }
                 
+                if !word.partOfSpeech.isEmpty || !word.level.isEmpty {
+                    Text(!word.partOfSpeech.isEmpty ? "\(word.partOfSpeech) · \(word.level)" : word.level)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                }
+                
                 Button(action: {
                     SoundPlayer.shared.speak(word.word)
                 }) {
@@ -85,13 +116,15 @@ public struct WordCardView: View {
                 
                 Spacer()
                 
-                HStack {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.caption)
-                    Text("點擊查看中文意思")
-                        .font(.system(size: 12, weight: .medium))
+                HStack(spacing: 6) {
+                    Text("👆 點一下查看中文意思")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.purple)
                 }
-                .foregroundColor(.secondary)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .background(Color.purple.opacity(0.12))
+                .cornerRadius(20)
                 .padding(.bottom, 20)
                 
             } else {
@@ -113,24 +146,47 @@ public struct WordCardView: View {
                 Divider()
                     .padding(.horizontal, 30)
                 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("例句：")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.purple)
-                        .textCase(.uppercase)
-                    
-                    Text(word.example)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    
-                    Text(word.exampleTranslation)
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                if !word.example.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .center, spacing: 8) {
+                            Text("例句：")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.purple)
+                                .textCase(.uppercase)
+                            
+                            Button(action: {
+                                SoundPlayer.shared.speakSentence(word.example)
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: soundPlayer.currentlyPlayingText == word.example ? "speaker.wave.3.fill" : "speaker.wave.2")
+                                        .font(.system(size: 12, weight: .semibold))
+                                    Text("朗讀例句")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                .foregroundColor(.purple)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.purple.opacity(0.12))
+                                .cornerRadius(8)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        
+                        Text(word.example)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        if !word.exampleTranslation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(word.exampleTranslation)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, 24)
-                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Spacer()
                 

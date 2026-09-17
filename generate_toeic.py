@@ -166,22 +166,147 @@ roots = [
     ("deviate", "/ˈdiːvieɪt/", "偏離，背離", "We must not deviate from our core mission.", "我們絕不能偏離我們的核心使命。"),
     ("devise", "/dɪˈvaɪz/", "設計，發明", "They need to devise a new strategy.", "他們需要設計一個新策略。"),
     ("devote", "/dɪˈvoʊt/", "致力於，奉獻", "We devote resources to staff training.", "我們投入資源於員工培訓。"),
-    ("diagnose", "/ˌdaɪəɡˈnoʊs/", "診斷，分析", "They need to diagnose the technical error.", "他們需要診斷技術錯誤。")
+    ("diagnose", "/ˌdaɪəɡˈnoʊs/", "診斷，分析", "They need to diagnose the technical error.", "他們需要診斷技術錯誤。"),
+    ("earn", "/ɜːrn/", "賺得，贏得", "The company earns a steady profit each quarter.", "該公司每季度都有穩定的利潤。"),
+    ("economize", "/ɪˈkɑːnəmaɪz/", "節約，節省", "We must economize on office supplies.", "我們必須節省辦公用品。"),
+    ("edit", "/ˈedɪt/", "編輯，校訂", "Please edit the draft before submission.", "請在提交前編輯草稿。"),
+    ("educate", "/ˈedʒukeɪt/", "教育，培養", "We educate employees on new compliance rules.", "我們培訓員工遵守新法規。"),
+    ("elect", "/ɪˈlekt/", "選舉，推選", "The shareholders will elect a new chairman.", "股東將選舉新董事長。"),
+    ("empower", "/ɪmˈpaʊər/", "授權，賦能", "The program empowers staff to make decisions.", "該項目使員工有權做出決定。"),
+    ("emphasize", "/ˈemfəsaɪz/", "強調，著重", "The CEO emphasized the importance of safety.", "執行長強調了安全的重要性。"),
+    ("employ", "/ɪmˈplɔɪ/", "僱用，使用", "They plan to employ fifty new staff members.", "他們計劃僱用五十名新員工。"),
+    ("enable", "/ɪˈneɪbl/", "使能夠，授權", "Technology will enable faster transactions.", "技術將實現更快的交易。"),
+    ("encourage", "/ɪnˈkɜːrɪdʒ/", "鼓勵，促進", "Managers encourage open communication.", "經理們鼓勵公開溝通。"),
+    ("endorse", "/ɪnˈdɔːrs/", "背書，贊同", "The celebrity agreed to endorse the product.", "該名人同意為該產品代言。"),
+    ("enforce", "/ɪnˈfɔːrs/", "執行，強制實施", "The agency will enforce the new regulations.", "該機構將執行新法規。"),
+    ("engage", "/ɪnˈɡeɪdʒ/", "參與，聘用", "We need to engage clients in our survey.", "我們需要讓客戶參與我們的調查。"),
+    ("enrich", "/ɪnˈrɪtʃ/", "使豐富，使充實", "Training will enrich employee knowledge.", "培訓將充實員工知識。"),
+    ("enlarge", "/ɪnˈlɑːrdʒ/", "擴大，放大", "They plan to enlarge the warehouse facility.", "他們計劃擴大倉庫設施。"),
+    ("escalate", "/ˈeskəleɪt/", "升級，加劇", "We must prevent disputes from escalating.", "我們必須防止爭端升級。"),
+    ("enter", "/ˈentər/", "進入，登記", "Please enter your password to log in.", "請輸入密碼登入。"),
+    ("entertain", "/ˌentərˈteɪn/", "招待，款待", "We will entertain foreign clients tonight.", "我們今晚將招待外國客戶。"),
+    ("entitle", "/ɪnˈtaɪtl/", "賦予權利", "This pass will entitle you to free admission.", "此通行證使您享有免費入場權。"),
+    ("equip", "/ɪˈkwɪp/", "裝備，配備", "We will equip the office with modern tools.", "我們將為辦公室配備現代化工具。"),
+    ("establish", "/ɪˈstæblɪʃ/", "建立，設立", "They plan to establish a branch in Tokyo.", "他們計劃在東京設立分公司。"),
+    ("enroll", "/ɪnˈroʊl/", "註冊，登記", "Employees can enroll in training courses.", "員工可以報名參加培訓課程。"),
+    ("evaluate", "/ɪˈvæljueɪt/", "評估，評價", "The committee will evaluate all applicants.", "委員會將評估所有申請人。"),
+    ("examine", "/ɪɡˈzæmɪn/", "檢查，審查", "Auditors will examine the financial records.", "審計員將審查財務記錄。"),
+    ("exceed", "/ɪkˈsiːd/", "超過，勝過", "Sales might exceed our quarterly target.", "銷售額可能會超過我們的季度目標。"),
+    ("exchange", "/ɪksˈtʃeɪndʒ/", "交換，兌換", "We can exchange contact information now.", "我們現在可以交換聯繫方式。"),
+    ("exclude", "/ɪkˈskluːd/", "排除，不包括", "The price excludes tax and shipping fees.", "價格不包括稅金和運費。"),
+    ("execute", "/ˈeksɪkjuːt/", "執行，實施", "The team will execute the marketing plan.", "團隊將執行行銷計劃。"),
+    ("exhibit", "/ɪɡˈzɪbɪt/", "展示，陳列", "They will exhibit new products at the expo.", "他們將在博覽會上展出新產品。"),
+    ("expand", "/ɪkˈspænd/", "擴展，擴大", "The firm wants to expand into new markets.", "該公司希望拓展新市場。"),
+    ("expect", "/ɪkˈspekt/", "預期，期待", "We expect higher profits this year.", "我們預計今年利潤會增加。"),
+    ("expedite", "/ˈekspədaɪt/", "加速，加快", "Please expedite the shipping process.", "請加快運送流程。"),
+    ("expire", "/ɪkˈspaɪər/", "到期，終止", "Your contract will expire next month.", "您的合同將於下個月到期。"),
+    ("explain", "/ɪkˈspleɪn/", "解釋，說明", "The consultant will explain the strategy.", "顧問將解釋該策略。"),
+    ("exploit", "/ɪkˈsplɔɪt/", "利用，開發", "We must exploit new business opportunities.", "我們必須開拓新的商機。"),
+    ("export", "/ɪkˈspɔːrt/", "出口，輸出", "The country exports electronic devices.", "該國出口電子設備。"),
+    ("expose", "/ɪkˈspoʊz/", "暴露，揭示", "The report will expose operational flaws.", "該報告將揭示營運缺陷。"),
+    ("express", "/ɪkˈspres/", "表達，表示", "Clients express satisfaction with our service.", "客戶對我們的服務表示滿意。"),
+    ("extend", "/ɪkˈstend/", "延長，擴展", "They agreed to extend the deadline by a week.", "他們同意將截止日期延長一週。"),
+    ("facilitate", "/fəˈsɪlɪteɪt/", "促進，幫助", "The new bridge will facilitate commerce.", "這座新橋將促進商業貿易。"),
+    ("finalize", "/ˈfaɪnəlaɪz/", "敲定，最終落實", "We must finalize the contract today.", "我們今天必須敲定合同。"),
+    ("finance", "/ˈfaɪnæns/", "資助，融資", "The bank agreed to finance the expansion.", "銀行同意為此次擴張提供資金。"),
+    ("fluctuate", "/ˈflʌktʃueɪt/", "波動，動搖", "Oil prices fluctuate on the global market.", "全球市場石油價格波動。"),
+    ("focus", "/ˈfoʊkəs/", "專注，聚焦", "We need to focus on customer satisfaction.", "我們需要專注於客戶滿意度。"),
+    ("forecast", "/ˈfɔːrkæst/", "預測，預報", "Analysts forecast growth in tech sector.", "分析師預測科技行業將會增長。"),
+    ("formulate", "/ˈfɔːrmjuleɪt/", "制定，構想", "We must formulate a contingency plan.", "我們必須制定應急計劃。"),
+    ("forward", "/ˈfɔːrwərd/", "轉發，推進", "Please forward the invoice to accounting.", "請將發票轉發至會計部。"),
+    ("foster", "/ˈfɔːstər/", "促進，培養", "The workshop aims to foster innovation.", "研討會旨在促進創新。"),
+    ("fulfill", "/fʊlˈfɪl/", "履行，滿足", "We strive to fulfill customer orders quickly.", "我們努力迅速履行客戶訂單。"),
+    ("fund", "/fʌnd/", "資助，撥款", "Investors agreed to fund the research project.", "投資者同意資助這項研究項目。"),
+    ("gain", "/ɡeɪn/", "獲得，增加", "We gained valuable market share this year.", "我們今年獲得了寶貴的市場份額。"),
+    ("gauge", "/ɡeɪdʒ/", "測量，評估", "The survey helps gauge customer sentiment.", "這項調查有助於評估客戶反響。"),
+    ("generate", "/ˈdʒenəreɪt/", "產生，引起", "The new campaign will generate leads.", "新活動將帶來潛在客戶。"),
+    ("govern", "/ˈɡʌvərn/", "管理，統治", "Regulations govern financial transactions.", "法規約束金融交易。"),
+    ("graduate", "/ˈɡrædʒueɪt/", "畢業，分級", "She graduated with a degree in accounting.", "她畢業於會計專業。"),
+    ("grant", "/ɡrænt/", "授予，准予", "The bank will grant a loan for the project.", "銀行將為該項目提供貸款。"),
+    ("guarantee", "/ˌɡærənˈtiː/", "保證，擔保", "We guarantee product quality for two years.", "我們保證產品品質兩年。"),
+    ("guide", "/ɡaɪd/", "引導，指導", "The manual will guide users through setup.", "手冊將指導用戶完成設定。"),
+    ("halt", "/hɔːlt/", "停止，中斷", "Strike actions will halt factory production.", "罷工行動將使工廠生產停頓。"),
+    ("handle", "/ˈhændl/", "處理，操縱", "Customer service handles all complaints.", "客戶服務部處理所有投訴。"),
+    ("highlight", "/ˈhaɪlaɪt/", "強調，醒目", "The summary highlights quarterly achievements.", "摘要強調了季度成就。"),
+    ("hire", "/ˈhaɪər/", "聘用，租用", "The company decided to hire a consultant.", "公司決定聘請顧問。"),
+    ("host", "/hoʊst/", "主持，主辦", "Our city will host the global summit.", "我們城市將主辦全球高峰會。"),
+    ("identify", "/aɪˈdentɪfaɪ/", "識別，認出", "We must identify the root cause of the error.", "我們必須找出錯誤的根本原因。"),
+    ("illustrate", "/ˈɪləstreɪt/", "說明，闡明", "Charts illustrate the sales performance.", "圖表說明了銷售業績。"),
+    ("implement", "/ˈɪmplɪment/", "執行，實施", "We will implement the new policy on Monday.", "我們將在週一實施新政策。"),
+    ("import", "/ˈɪmpɔːrt/", "進口，輸入", "The company imports raw materials from Asia.", "該公司從亞洲進口原材料。"),
+    ("impress", "/ɪmˈpres/", "留下深刻印象", "Her presentation impressed the investors.", "她的演講給投資者留下了深刻印象。"),
+    ("improve", "/ɪmˈpruːv/", "改善，提升", "We continuously improve our service quality.", "我們不斷提升服務品質。"),
+    ("include", "/ɪnˈkluːd/", "包含，列入", "The package includes all accessories.", "包裝包含所有配件。"),
+    ("incorporate", "/ɪnˈkɔːrpəreɪt/", "合併，包含", "We should incorporate user feedback in design.", "我們應該在設計中融入用戶回饋。"),
+    ("increase", "/ɪnˈkriːs/", "增加，增強", "Sales increased significantly last month.", "上個月銷售額顯著增加。"),
+    ("indicate", "/ˈɪndɪkeɪt/", "指出，顯示", "Survey results indicate high satisfaction.", "調查結果顯示高度滿意。"),
+    ("inform", "/ɪnˈfɔːrm/", "通知，告知", "Please inform the team of the schedule change.", "請通知團隊日程變更。"),
+    ("initiate", "/ɪˈnɪʃieɪt/", "發起，創始", "Management will initiate a review process.", "管理層將啟動審查流程。"),
+    ("inspect", "/ɪnˈspekt/", "檢查，視察", "Inspectors will inspect the facility today.", "檢查員今天將檢查設施。"),
+    ("install", "/ɪnˈstɔːl/", "安裝，安置", "Technicians will install the new software.", "技術人員將安裝新軟體。"),
+    ("institute", "/ˈɪnstɪtuːt/", "設立，制定", "The board will institute a code of conduct.", "董事會將制定行為準則。"),
+    ("instruct", "/ɪnˈstrʌkt/", "指示，指導", "The trainer will instruct staff on security.", "培訓師將指導員工安全規範。"),
+    ("insure", "/ɪnˈʃʊr/", "投保，保險", "We need to insure the inventory against loss.", "我們需要為庫存投保以防損失。"),
+    ("intend", "/ɪnˈtend/", "打算，企圖", "They intend to launch the service in spring.", "他們打算在春季推出該服務。"),
+    ("interact", "/ˌɪntərˈækt/", "互動，交流", "Staff interact with customers daily.", "員工每天與客戶互動。"),
+    ("interest", "/ˈɪntrəst/", "使感興趣，利息", "The proposal interested several buyers.", "該提案引起了數位買家的興趣。"),
+    ("interpret", "/ɪnˈtɜːrprɪt/", "解釋，翻譯", "Analysts interpret the latest financial data.", "分析師解讀最新的財務數據。"),
+    ("introduce", "/ˌɪntrəˈduːs/", "引進，介紹", "We will introduce a new product line next week.", "我們下週將推出新產品線。"),
+    ("invest", "/ɪnˈvest/", "投資，投入", "The company will invest in green technology.", "公司將投資綠色科技。"),
+    ("investigate", "/ɪnˈvestɪɡeɪt/", "調查，研究", "Auditors will investigate the discrepancy.", "審計員將調查差異情況。"),
+    ("invite", "/ɪnˈvaɪt/", "邀請，徵求", "We invite all stakeholders to the forum.", "我們邀請所有利害關係人參加論壇。"),
+    ("invoice", "/ˈɪnvɔɪs/", "開具發票", "We invoice clients at the end of each month.", "我們在每月底向客戶開具發票。"),
+    ("isolate", "/ˈaɪsəleɪt/", "隔離，孤立", "Engineers will isolate the network glitch.", "工程師將隔離網路故障。"),
+    ("issue", "/ˈɪʃuː/", "發行，發出", "The bank will issue a new credit card.", "銀行將發行新的信用卡。"),
+    ("join", "/dʒɔɪn/", "加入，結合", "She decided to join our marketing team.", "她決定加入我們的行銷團隊。"),
+    ("judge", "/dʒʌdʒ/", "評判，判斷", "The panel will judge all entries objectively.", "評審小組將客觀評審所有參賽作品。"),
+    ("justify", "/ˈdʒʌstɪfaɪ/", "證明...合理", "Managers must justify their budget requests.", "經理必須證明其預算請求的合理性。"),
+    ("launch", "/lɔːntʃ/", "發起，上市", "They will launch the advertising campaign tomorrow.", "他們明天將啟動宣傳活動。"),
+    ("lead", "/liːd/", "領導，帶領", "He was chosen to lead the task force.", "他被選中領導專案小組。"),
+    ("lease", "/liːs/", "租用，出租", "We agreed to lease the downtown office space.", "我們同意租下市中心的辦公場地。"),
+    ("lecture", "/ˈlektʃər/", "演講，講課", "The professor will lecture on economics.", "教授將就經濟學發表演講。"),
+    ("legislate", "/ˈledʒɪsleɪt/", "立法", "Lawmakers will legislate on consumer protection.", "立法者將就消費者保護進行立法。"),
+    ("lend", "/lend/", "貸出，借給", "The bank will lend funds for infrastructure.", "銀行將為基礎設施提供貸款。"),
+    ("leverage", "/ˈlevərɪdʒ/", "槓桿利用", "We must leverage our brand reputation.", "我們必須善用我們的品牌聲譽。"),
+    ("license", "/ˈlaɪsns/", "許可，授權", "The government will license new operators.", "政府將向新業者發放許可證。"),
+    ("limit", "/ˈlɪmɪt/", "限制，限定", "We must limit unnecessary travel expenses.", "我們必須限制不必要的差旅費用。"),
+    ("link", "/lɪŋk/", "連接，關聯", "The report links efficiency to staff morale.", "報告將工作效率與員工士氣聯繫起來。"),
+    ("locate", "/ˈloʊkeɪt/", "定位，位於", "They plan to locate the new plant near ports.", "他們計劃將新廠設在港口附近。"),
+    ("maintain", "/meɪnˈteɪn/", "維持，保養", "Technicians maintain the servers regularly.", "技術人員定期維護伺服器。"),
+    ("manage", "/ˈmænɪdʒ/", "管理，處置", "She manages a global sales department.", "她管理一個全球銷售部門。"),
+    ("manufacture", "/ˌmænjuˈfæktʃər/", "製造，生產", "The company manufactures medical devices.", "該公司製造醫療設備。"),
+    ("market", "/ˈmɑːrkɪt/", "行銷，推銷", "They market products to young professionals.", "他們向年輕專業人士推銷產品。"),
+    ("maximize", "/ˈmæksɪmaɪz/", "最大化", "Our priority is to maximize investor returns.", "我們的首要任務是實現投資者回報最大化。"),
+    ("measure", "/ˈmeʒər/", "測量，衡量", "We use KPIs to measure project progress.", "我們使用關鍵績效指標衡量項目進展。"),
+    ("mediate", "/ˈmiːdieɪt/", "調解，調停", "A third party will mediate the contract dispute.", "第三方將調解合同爭議。"),
+    ("mention", "/ˈmenʃn/", "提及，說起", "The report mentions the latest compliance rules.", "該報告提到了最新的合規規則。"),
+    ("merge", "/mɜːrdʒ/", "合併，併購", "The two airlines decided to merge operations.", "兩家航空公司決定合併業務。"),
+    ("minimize", "/ˈmɪnɪmaɪz/", "最小化", "We must minimize overhead operational costs.", "我們必須盡量減少日常營運成本。"),
+    ("modify", "/ˈmɑːdɪfaɪ/", "修改，更改", "Engineers will modify the design parameters.", "工程師將修改設計參數。"),
+    ("monitor", "/ˈmɑːnɪtər/", "監控，監視", "The team will monitor system performance daily.", "團隊將每天監控系統效能。"),
+    ("motivate", "/ˈmoʊtɪveɪt/", "激勵，激發", "Bonuses motivate staff to meet sales quotas.", "獎金激勵員工達到銷售配額。"),
+    ("navigate", "/ˈnævɪɡeɪt/", "導航，應對", "Managers must navigate regulatory changes.", "經理們必須妥善應對法規變化。"),
+    ("negotiate", "/nɪˈɡoʊʃieɪt/", "談判，協商", "We need to negotiate better supplier prices.", "我們需要協商更好的供應商價格。"),
+    ("network", "/ˈnetwɜːrk/", "建立人脈，連線", "Attending expos helps professionals network.", "參加博覽會有助於專業人士建立人脈。"),
+    ("notice", "/ˈnoʊtɪs/", "注意，通知", "Customers noticed the improved app speed.", "客戶注意到了應用程式速度的提升。"),
+    ("notify", "/ˈnoʊtɪfaɪ/", "通知，告知", "Please notify us immediately of any delays.", "如有任何延遲，請立即通知我們。"),
+    ("obtain", "/əbˈteɪn/", "獲得，獲取", "You must obtain approval before spending.", "您在支出前必須獲得批准。"),
+    ("occupy", "/ˈɑːkjupaɪ/", "佔用，佔領", "The company occupies three floors of the tower.", "該公司佔用大樓的三個樓層。"),
+    ("offer", "/ˈɔːfər/", "提供，提議", "We offer generous benefits to new hires.", "我們為新員工提供豐厚的福利。"),
+    ("operate", "/ˈɑːpəreɪt/", "營運，運作", "The firm operates twenty stores nationwide.", "該公司在全國經營二十家門市。"),
+    ("oppose", "/əˈpoʊz/", "反對，抗爭", "Shareholders oppose the hostile takeover.", "股東反對這項惡意收購。"),
+    ("optimize", "/ˈɑːptɪmaɪz/", "優化，完善", "We optimize our website for search engines.", "我們針對搜尋引擎優化網站。"),
+    ("order", "/ˈɔːrdər/", "訂購，命令", "Please order replacement parts today.", "請於今天訂購更換零件。"),
+    ("organize", "/ˈɔːrɡənaɪz/", "組織，籌辦", "She will organize the annual conference.", "她將籌辦年度會議。"),
+    ("originate", "/əˈrɪdʒɪneɪt/", "起源，發起", "The novel business model originated in Europe.", "這項新穎的商業模式起源於歐洲。"),
+    ("outline", "/ˈaʊtlaɪn/", "概述，概括", "The CEO outlined the five-year strategic plan.", "執行長概述了五年策略計劃。"),
+    ("oversee", "/ˌoʊvərˈsiː/", "監督，審視", "The director will oversee quality assurance.", "董事將監督品質保證工作。"),
+    ("participate", "/pɑːrˈtɪsɪpeɪt/", "參與，參加", "All employees should participate in the survey.", "所有員工都應參與此項調查。"),
+    ("partner", "/ˈpɑːrtnər/", "合作，合夥", "We partner with local firms for delivery.", "我們與本地公司合作進行配送。"),
+    ("patronize", "/ˈpeɪtrənaɪz/", "光顧，惠顧", "Locals patronize our neighborhood branch.", "當地人經常光顧我們的社區分店。"),
+    ("perform", "/pərˈfɔːrm/", "執行，表現", "The system performed reliably under load.", "該系統在負載下表現可靠。"),
+    ("permit", "/pərˈmɪt/", "許可，准許", "The city will permit construction next week.", "市政府將於下週批准施工。")
 ]
-
-# Standard suffixes to generate grammatical derivative variations
-# Form templates to multiply 150 words to 3,000 words:
-# For each word, generate:
-# 1. Base verb/noun (Beginner)
-# 2. Gerund / Continuous form (Beginner)
-# 3. Agent Noun (e.g. -er, -or, -ist) (Intermediate)
-# 4. Action Noun (e.g. -tion, -ment, -ance) (Intermediate)
-# 5. Adjective form (e.g. -able, -ive, -al) (Intermediate)
-# 6. Adverb form (e.g. -ly) (Advanced)
-# 7. Past / Passive form (e.g. -ed) (Beginner)
-# 8. Plural / 3rd Person Singular (e.g. -s, -es) (Beginner)
-# 9. Negative Prefix (e.g. un-, dis-, non-, re-) (Advanced)
-# 10. Abstract quality (e.g. -ity, -ness) (Advanced)
 
 print("Starting TOEIC 3,000 vocabulary generation...")
 toeic_list = []
@@ -330,24 +455,21 @@ for idx, (word, phonetic, translation, example, example_translation) in enumerat
         "Advanced"
     ))
 
-# Slice or pad to get exactly 3,000 words
+# Exactly 3,000 words
 toeic_list = toeic_list[:3000]
-while len(toeic_list) < 3000:
-    # Safe fallback padding in case we are short
-    # Duplicates entries slightly modified to avoid sqlite UNIQUE constraint
-    dup_entry = toeic_list[len(toeic_list) % len(roots)]
-    padded_word = f"{dup_entry[0]}-ext{len(toeic_list)}"
-    toeic_list.append((padded_word, dup_entry[1], dup_entry[2], dup_entry[3], dup_entry[4], dup_entry[5]))
 
-# Ensure the output directory exists
-os.makedirs("/Users/andy/EnglishCoach/EnglishCoach.swiftpm/Sources/Resources", exist_ok=True)
-csv_path = "/Users/andy/EnglishCoach/EnglishCoach.swiftpm/Sources/Resources/toeic_3000.csv"
+# Write to both destinations
+paths = [
+    "/Users/andy/EnglishCoach/EnglishCoach/Resources/toeic_3000.csv",
+    "/Users/andy/EnglishCoach/EnglishCoach.swiftpm/Sources/Resources/toeic_3000.csv"
+]
 
-with open(csv_path, mode="w", encoding="utf-8", newline="") as f:
-    writer = csv.writer(f)
-    # Write header
-    writer.writerow(["word", "phonetic", "translation", "example", "example_translation", "level"])
-    for row in toeic_list:
-        writer.writerow(row)
+for csv_path in paths:
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    with open(csv_path, mode="w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["word", "phonetic", "translation", "example", "example_translation", "level"])
+        for row in toeic_list:
+            writer.writerow(row)
+    print(f"Successfully wrote {len(toeic_list)} clean TOEIC words in CSV at: {csv_path}")
 
-print(f"Successfully generated {len(toeic_list)} TOEIC words in CSV at: {csv_path}")
