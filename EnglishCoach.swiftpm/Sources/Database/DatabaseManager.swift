@@ -931,12 +931,12 @@ public class DatabaseManager {
         }
         sqlite3_finalize(statement)
         
-        // Ensure all 3,600 TOEIC words are imported and metadata is enriched with version 2
-        if vocabVersion < 2 || tierCount < 3600 {
+        // Ensure all 3,600 TOEIC words are imported and metadata is enriched with version 3
+        if vocabVersion < 3 || tierCount < 3600 {
             print("TOEIC vocabulary migration required (version: \(vocabVersion), 3-tier count: \(tierCount)). Importing toeic_3600.csv...")
             importToeicVocabulary()
             migrateLegacyUserPreferences()
-            UserDefaults.standard.set(2, forKey: "toeic_vocabulary_version")
+            UserDefaults.standard.set(3, forKey: "toeic_vocabulary_version")
         }
     }
     
@@ -994,12 +994,58 @@ public class DatabaseManager {
             // Execute in single SQLite transaction for sub-second performance (< 0.2s)
             sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
             
+            // Phase 3 Migration: Merge redundant mechanical inflections into canonical lemmas
+            let mergePairs: [(inflection: String, canonical: String)] = [
+                ("cooks", "cook"), ("cooked", "cook"), ("cooking", "cook"),
+                ("stays", "stay"), ("stayed", "stay"), ("staying", "stay"),
+                ("adds", "add"), ("added", "add"), ("adding", "add"),
+                ("cars", "car"), ("cups", "cup"), ("meals", "meal"), ("seats", "seat"),
+                ("fixes", "fix"), ("fixed", "fix"), ("drinks", "drink"), ("drinking", "drink"),
+                ("delays", "delay"), ("delayed", "delay"), ("parks", "park"), ("parking", "park"),
+                ("calls", "call"), ("hotels", "hotel"), ("trains", "train"),
+                ("bags", "bag"), ("belts", "belt"), ("carts", "cart"), ("cuts", "cut"),
+                ("deals", "deal"), ("desks", "desk"), ("dinners", "dinner"), ("dishes", "dish"),
+                ("doors", "door"), ("drops", "drop"), ("eating", "eat"), ("ended", "end"),
+                ("facts", "fact"), ("fails", "fail"), ("feels", "feel"), ("flights", "flight"),
+                ("flying", "fly"), ("forms", "form"), ("gets", "get"), ("gifts", "gift")
+            ]
+            
+            for pair in mergePairs {
+                let transferQuery = """
+                UPDATE words SET 
+                    learned = MAX(learned, (SELECT learned FROM words WHERE word = '\(pair.inflection)')),
+                    learned_date = COALESCE(learned_date, (SELECT learned_date FROM words WHERE word = '\(pair.inflection)')),
+                    wrong_count = MAX(wrong_count, (SELECT wrong_count FROM words WHERE word = '\(pair.inflection)')),
+                    correct_count = correct_count + (SELECT correct_count FROM words WHERE word = '\(pair.inflection)')
+                WHERE word = '\(pair.canonical)' AND EXISTS (SELECT 1 FROM words WHERE word = '\(pair.inflection)');
+                """
+                sqlite3_exec(db, transferQuery, nil, nil, nil)
+                
+                let transferReviewQuery = """
+                UPDATE words SET 
+                    next_review_date = (SELECT next_review_date FROM words WHERE word = '\(pair.inflection)')
+                WHERE word = '\(pair.canonical)' AND next_review_date IS NULL AND EXISTS (SELECT 1 FROM words WHERE word = '\(pair.inflection)' AND next_review_date IS NOT NULL);
+                """
+                sqlite3_exec(db, transferReviewQuery, nil, nil, nil)
+                
+                sqlite3_exec(db, "DELETE FROM words WHERE word = '\(pair.inflection)';", nil, nil, nil)
+            }
+            
+            // Phase 3 Migration: Remove outdated non-TOEIC candidate words
+            let removeWords = [
+                "genocide", "insurgent", "weaponry", "terrorism", "abortion",
+                "kidnap", "self-defense", "fridays", "jumped", "leaves", "hello", "okay"
+            ]
+            for rw in removeWords {
+                sqlite3_exec(db, "DELETE FROM words WHERE word = '\(rw)';", nil, nil, nil)
+            }
+            
             let insertStatementString = """
             INSERT OR IGNORE INTO words (word, phonetic, translation, example, example_translation, level, difficulty, topic, subtopic, exam_tags, part_of_speech)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """
             let updateStatementString = """
-            UPDATE words SET level = ?, difficulty = ?, topic = ?, subtopic = ?, exam_tags = ?, part_of_speech = ? WHERE word = ?;
+            UPDATE words SET level = ?, difficulty = ?, topic = ?, subtopic = ?, exam_tags = ?, part_of_speech = ?, phonetic = ?, translation = ?, example = ?, example_translation = ? WHERE word = ?;
             """
             
             var insertStmt: OpaquePointer? = nil
@@ -1052,7 +1098,11 @@ public class DatabaseManager {
                         sqlite3_bind_text(stmt, 4, subtopic, -1, SQLITE_TRANSIENT)
                         sqlite3_bind_text(stmt, 5, examTags, -1, SQLITE_TRANSIENT)
                         sqlite3_bind_text(stmt, 6, pos, -1, SQLITE_TRANSIENT)
-                        sqlite3_bind_text(stmt, 7, word, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 7, phonetic, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 8, translation, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 9, example, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 10, exampleTranslation, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 11, word, -1, SQLITE_TRANSIENT)
                         _ = sqlite3_step(stmt)
                         sqlite3_reset(stmt)
                     }
