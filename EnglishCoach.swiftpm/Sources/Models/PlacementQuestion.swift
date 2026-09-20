@@ -28,7 +28,7 @@ public struct PlacementQuestion: Identifiable {
         PlacementQuestion(id: 6, word: "notice", phonetic: "/ˈnoʊtɪs/", options: ["通知，公告", "合約，條款", "收據，發票", "投訴，抱怨"], correctAnswer: "通知，公告", level: Word.kLevelBasic),
         PlacementQuestion(id: 7, word: "agenda", phonetic: "/əˈdʒendə/", options: ["議程，討論事項", "會議室", "簽到表", "會議紀錄"], correctAnswer: "議程，討論事項", level: Word.kLevelBasic),
         
-        // 750+ 進階 (7 questions, difficulty 3)
+        // 750+ 進階 (7 questions, difficulty 2-4)
         PlacementQuestion(id: 8, word: "budget", phonetic: "/ˈbʌdʒɪt/", options: ["預算", "利息", "帳戶", "借款"], correctAnswer: "預算", level: Word.kLevelAdvanced),
         PlacementQuestion(id: 9, word: "invoice", phonetic: "/ˈɪnvɔɪs/", options: ["發票，請款單", "合約，協議", "收據，小票", "備忘錄，公文"], correctAnswer: "發票，請款單", level: Word.kLevelAdvanced),
         PlacementQuestion(id: 10, word: "deadline", phonetic: "/ˈdedlaɪn/", options: ["截止日期", "開會時間", "面試日期", "出發時程"], correctAnswer: "截止日期", level: Word.kLevelAdvanced),
@@ -37,7 +37,7 @@ public struct PlacementQuestion: Identifiable {
         PlacementQuestion(id: 13, word: "supplier", phonetic: "/səˈplaɪər/", options: ["供應商，供貨商", "消費者", "求職者", "投資人"], correctAnswer: "供應商，供貨商", level: Word.kLevelAdvanced),
         PlacementQuestion(id: 14, word: "inventory", phonetic: "/ˈɪnvəntɔːri/", options: ["庫存，盤點", "銷售額", "損益表", "廣告宣傳"], correctAnswer: "庫存，盤點", level: Word.kLevelAdvanced),
         
-        // 860+ 金證 (6 questions, difficulty 4-5)
+        // 860+ 金證 (6 questions, difficulty 3-5)
         PlacementQuestion(id: 15, word: "negotiate", phonetic: "/nɪˈɡoʊʃieɪt/", options: ["談判，協商", "執行，實施", "終止，中斷", "指派，分工"], correctAnswer: "談判，協商", level: Word.kLevelGold),
         PlacementQuestion(id: 16, word: "arbitration", phonetic: "/ˌɑːrbɪˈtreɪʃn/", options: ["仲裁，公斷", "起訴，審判", "宣誓，證明", "上訴，抗告"], correctAnswer: "仲裁，公斷", level: Word.kLevelGold),
         PlacementQuestion(id: 17, word: "compliance", phonetic: "/kəmˈplaɪəns/", options: ["合規，遵守", "抗辯，異議", "創新，變革", "授權，批准"], correctAnswer: "合規，遵守", level: Word.kLevelGold),

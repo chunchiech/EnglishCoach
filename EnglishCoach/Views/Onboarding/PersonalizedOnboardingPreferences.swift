@@ -255,7 +255,7 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
         
         switch userTier {
         case ToeicTarget.basic.rawValue:
-            // 550+ 聚焦 Lv.1~3
+            // 550+ 聚焦 Lv.1~2
             switch difficulty {
             case 1: return 1.6
             case 2: return 1.4
@@ -273,7 +273,7 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
             default: return 0.7
             }
         case ToeicTarget.gold.rawValue:
-            // 860+ 密集涵蓋 Lv.4~5
+            // 860+ 涵蓋 Lv.3~5（聚焦 Lv.4~5）
             switch difficulty {
             case 1: return 0.2
             case 2: return 0.4
