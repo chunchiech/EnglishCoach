@@ -20,6 +20,12 @@ public struct DailyLearningView: View {
         onboardingPrefs.getScenarioDisplayText()
     }
     
+    private var toeicTargetDisplayText: String {
+        let rawLvl = UserDefaults.standard.string(forKey: "user_level") ?? onboardingPrefs.recommendedLevel
+        let target = ToeicTarget.from(rawString: rawLvl)
+        return "🎯 \(target.displayName)"
+    }
+    
     public var onComplete: () -> Void
     public var onStartQuiz: (() -> Void)?
     
@@ -51,17 +57,28 @@ public struct DailyLearningView: View {
                     VStack(spacing: 20) {
                         // Progress Header
                         VStack(spacing: 8) {
-                            if let scenarioText = scenarioDisplayText {
+                            VStack(alignment: .leading, spacing: 4) {
+                                if let scenarioText = scenarioDisplayText {
+                                    HStack(spacing: 4) {
+                                        Text(scenarioText)
+                                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.85)
+                                        Spacer()
+                                    }
+                                }
+                                
                                 HStack(spacing: 4) {
-                                    Text(scenarioText)
+                                    Text(toeicTargetDisplayText)
                                         .font(.system(size: 12, weight: .medium, design: .rounded))
                                         .foregroundColor(.secondary)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.85)
                                     Spacer()
                                 }
-                                .padding(.bottom, 2)
                             }
+                            .padding(.bottom, 2)
                             
                             HStack {
                                 Text("卡片 \(currentIndex + 1) / \(words.count)")

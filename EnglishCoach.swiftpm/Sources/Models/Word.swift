@@ -93,6 +93,44 @@ public struct Word: Identifiable, Codable, Hashable {
     public var examTags: [String]
     public var partOfSpeech: String
     
+    public static func normalizePhonetic(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.contains(", /") {
+            let parts = trimmed.components(separatedBy: ", /")
+            if let first = parts.first, !first.isEmpty {
+                return first.hasSuffix("/") ? first : "\(first)/"
+            }
+        } else if trimmed.contains("; /") {
+            let parts = trimmed.components(separatedBy: "; /")
+            if let first = parts.first, !first.isEmpty {
+                return first.hasSuffix("/") ? first : "\(first)/"
+            }
+        }
+        return trimmed
+    }
+    
+    public static func normalizeTraditionalChinese(_ text: String) -> String {
+        var result = text
+        let map = [
+            ("伙计们，朋友们，同事们", "夥伴們，朋友們，同事們"),
+            ("伙计们，我们来回顾一下第三季度的销售数据。", "夥伴們，我們來回顧一下第三季度的銷售數據。"),
+            ("伙伴们", "夥伴們"),
+            ("销售数据", "銷售數據"),
+            ("数据流", "數據流"),
+            ("紮实的", "紮實的"),
+            ("声音", "聲音"),
+            ("市场需求", "市場需求"),
+            ("独占", "獨佔"),
+            ("獨占", "獨佔"),
+            ("正面临诉讼，下个月需要出庭", "正面臨訴訟，下個月需要出庭"),
+            ("更低的价格", "更低的價格")
+        ]
+        for (s, t) in map {
+            result = result.replacingOccurrences(of: s, with: t)
+        }
+        return result
+    }
+
     public init(
         id: Int,
         word: String,
@@ -117,10 +155,10 @@ public struct Word: Identifiable, Codable, Hashable {
     ) {
         self.id = id
         self.word = word
-        self.phonetic = phonetic
-        self.translation = translation
+        self.phonetic = Self.normalizePhonetic(phonetic)
+        self.translation = Self.normalizeTraditionalChinese(translation)
         self.example = example
-        self.exampleTranslation = exampleTranslation
+        self.exampleTranslation = Self.normalizeTraditionalChinese(exampleTranslation)
         self.learned = learned
         self.learnedDate = learnedDate
         self.correctCount = correctCount
