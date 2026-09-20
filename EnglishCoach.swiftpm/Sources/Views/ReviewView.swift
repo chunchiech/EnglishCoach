@@ -114,9 +114,9 @@ public struct ReviewView: View {
                                         .font(.system(size: 18, weight: .bold, design: .rounded))
                                         .foregroundColor(.primary)
                                     
-                                    // Difficulty & Part of Speech chips
+                                    // Target Level & Part of Speech chips
                                     HStack(spacing: 4) {
-                                        Text("Lv.\(word.difficulty)")
+                                        Text(word.displayLevelName)
                                             .font(.system(size: 11, weight: .bold, design: .rounded))
                                             .foregroundColor(.blue)
                                             .padding(.horizontal, 6)
