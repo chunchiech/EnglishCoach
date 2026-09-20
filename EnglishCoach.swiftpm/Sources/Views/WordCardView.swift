@@ -85,8 +85,8 @@ public struct WordCardView: View {
                         .cornerRadius(20)
                 }
                 
-                if !word.partOfSpeech.isEmpty || !word.level.isEmpty {
-                    Text(!word.partOfSpeech.isEmpty ? "\(word.partOfSpeech) · \(word.displayLevelName)" : word.displayLevelName)
+                if !word.partOfSpeech.isEmpty {
+                    Text(word.partOfSpeech)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 12)
