@@ -934,9 +934,14 @@ public class DatabaseManager {
         // Ensure all 3,600 TOEIC words are imported and metadata is enriched with version 3
         if vocabVersion < 3 || tierCount < 3600 {
             print("TOEIC vocabulary migration required (version: \(vocabVersion), 3-tier count: \(tierCount)). Importing toeic_3600.csv...")
-            importToeicVocabulary()
-            migrateLegacyUserPreferences()
-            UserDefaults.standard.set(3, forKey: "toeic_vocabulary_version")
+            do {
+                try importToeicVocabulary()
+                migrateLegacyUserPreferences()
+                UserDefaults.standard.set(3, forKey: "toeic_vocabulary_version")
+                print("Successfully completed TOEIC vocabulary migration to version 3.")
+            } catch {
+                print("CRITICAL: TOEIC vocabulary migration failed: \(error). Rollback was performed; version flag remains \(vocabVersion).")
+            }
         }
     }
     
@@ -980,21 +985,27 @@ public class DatabaseManager {
         print("Successfully migrated legacy user preferences and refreshed today words cache.")
     }
     
-    public func importToeicVocabulary() {
+    public func importToeicVocabulary() throws {
         // Find toeic_3600.csv inside resources bundle with safe fallback to toeic_3000.csv
         guard let csvURL = Bundle.main.url(forResource: "toeic_3600", withExtension: "csv") ?? Bundle.main.url(forResource: "toeic_3000", withExtension: "csv") else {
             print("Could not find toeic_3600.csv or toeic_3000.csv in main bundle")
-            return
+            throw NSError(domain: "DatabaseManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Could not find toeic_3600.csv in main bundle"])
         }
         
+        let data = try String(contentsOf: csvURL, encoding: .utf8)
+        let lines = data.components(separatedBy: .newlines)
+        
+        // Execute in single SQLite transaction for sub-second performance & atomicity
+        if sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil) != SQLITE_OK {
+            let errMsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "Unknown error"
+            throw NSError(domain: "DatabaseManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to begin transaction: \(errMsg)"])
+        }
+        
+        var insertStmt: OpaquePointer? = nil
+        var updateStmt: OpaquePointer? = nil
+        
         do {
-            let data = try String(contentsOf: csvURL, encoding: .utf8)
-            let lines = data.components(separatedBy: .newlines)
-            
-            // Execute in single SQLite transaction for sub-second performance (< 0.2s)
-            sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
-            
-            // Phase 3 Migration: Merge redundant mechanical inflections into canonical lemmas
+            // Phase 3.1 Migration: Merge redundant mechanical inflections into canonical lemmas with FULL SM-2 state preservation
             let mergePairs: [(inflection: String, canonical: String)] = [
                 ("cooks", "cook"), ("cooked", "cook"), ("cooking", "cook"),
                 ("stays", "stay"), ("stayed", "stay"), ("staying", "stay"),
@@ -1016,28 +1027,59 @@ public class DatabaseManager {
                     learned = MAX(learned, (SELECT learned FROM words WHERE word = '\(pair.inflection)')),
                     learned_date = COALESCE(learned_date, (SELECT learned_date FROM words WHERE word = '\(pair.inflection)')),
                     wrong_count = MAX(wrong_count, (SELECT wrong_count FROM words WHERE word = '\(pair.inflection)')),
-                    correct_count = correct_count + (SELECT correct_count FROM words WHERE word = '\(pair.inflection)')
+                    correct_count = correct_count + (SELECT correct_count FROM words WHERE word = '\(pair.inflection)'),
+                    easiness_factor = CASE 
+                        WHEN learned = 0 AND (SELECT learned FROM words WHERE word = '\(pair.inflection)') = 1 
+                            THEN (SELECT easiness_factor FROM words WHERE word = '\(pair.inflection)')
+                        WHEN learned = 1 AND (SELECT learned FROM words WHERE word = '\(pair.inflection)') = 1 AND (SELECT repetition_count FROM words WHERE word = '\(pair.inflection)') > repetition_count
+                            THEN (SELECT easiness_factor FROM words WHERE word = '\(pair.inflection)')
+                        ELSE easiness_factor
+                    END,
+                    interval_days = CASE 
+                        WHEN learned = 0 AND (SELECT learned FROM words WHERE word = '\(pair.inflection)') = 1 
+                            THEN (SELECT interval_days FROM words WHERE word = '\(pair.inflection)')
+                        WHEN learned = 1 AND (SELECT learned FROM words WHERE word = '\(pair.inflection)') = 1 AND (SELECT repetition_count FROM words WHERE word = '\(pair.inflection)') > repetition_count
+                            THEN (SELECT interval_days FROM words WHERE word = '\(pair.inflection)')
+                        ELSE interval_days
+                    END,
+                    repetition_count = CASE 
+                        WHEN learned = 0 AND (SELECT learned FROM words WHERE word = '\(pair.inflection)') = 1 
+                            THEN (SELECT repetition_count FROM words WHERE word = '\(pair.inflection)')
+                        WHEN learned = 1 AND (SELECT learned FROM words WHERE word = '\(pair.inflection)') = 1 AND (SELECT repetition_count FROM words WHERE word = '\(pair.inflection)') > repetition_count
+                            THEN (SELECT repetition_count FROM words WHERE word = '\(pair.inflection)')
+                        ELSE repetition_count
+                    END,
+                    next_review_date = CASE
+                        WHEN next_review_date IS NULL 
+                            THEN (SELECT next_review_date FROM words WHERE word = '\(pair.inflection)')
+                        WHEN (SELECT next_review_date FROM words WHERE word = '\(pair.inflection)') IS NOT NULL 
+                            THEN MIN(next_review_date, (SELECT next_review_date FROM words WHERE word = '\(pair.inflection)'))
+                        ELSE next_review_date
+                    END
                 WHERE word = '\(pair.canonical)' AND EXISTS (SELECT 1 FROM words WHERE word = '\(pair.inflection)');
                 """
-                sqlite3_exec(db, transferQuery, nil, nil, nil)
+                if sqlite3_exec(db, transferQuery, nil, nil, nil) != SQLITE_OK {
+                    let errMsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "Unknown error"
+                    throw NSError(domain: "DatabaseManager", code: 501, userInfo: [NSLocalizedDescriptionKey: "Failed transfer for \(pair.inflection): \(errMsg)"])
+                }
                 
-                let transferReviewQuery = """
-                UPDATE words SET 
-                    next_review_date = (SELECT next_review_date FROM words WHERE word = '\(pair.inflection)')
-                WHERE word = '\(pair.canonical)' AND next_review_date IS NULL AND EXISTS (SELECT 1 FROM words WHERE word = '\(pair.inflection)' AND next_review_date IS NOT NULL);
-                """
-                sqlite3_exec(db, transferReviewQuery, nil, nil, nil)
-                
-                sqlite3_exec(db, "DELETE FROM words WHERE word = '\(pair.inflection)';", nil, nil, nil)
+                if sqlite3_exec(db, "DELETE FROM words WHERE word = '\(pair.inflection)';", nil, nil, nil) != SQLITE_OK {
+                    let errMsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "Unknown error"
+                    throw NSError(domain: "DatabaseManager", code: 502, userInfo: [NSLocalizedDescriptionKey: "Failed delete for \(pair.inflection): \(errMsg)"])
+                }
             }
             
-            // Phase 3 Migration: Remove outdated non-TOEIC candidate words
+            // Phase 3.1 Migration: Remove outdated non-TOEIC candidate words
             let removeWords = [
                 "genocide", "insurgent", "weaponry", "terrorism", "abortion",
-                "kidnap", "self-defense", "fridays", "jumped", "leaves", "hello", "okay"
+                "kidnap", "self-defense", "fridays", "jumped", "leaves", "hello", "okay",
+                "terrorist"
             ]
             for rw in removeWords {
-                sqlite3_exec(db, "DELETE FROM words WHERE word = '\(rw)';", nil, nil, nil)
+                if sqlite3_exec(db, "DELETE FROM words WHERE word = '\(rw)';", nil, nil, nil) != SQLITE_OK {
+                    let errMsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "Unknown error"
+                    throw NSError(domain: "DatabaseManager", code: 503, userInfo: [NSLocalizedDescriptionKey: "Failed delete for \(rw): \(errMsg)"])
+                }
             }
             
             let insertStatementString = """
@@ -1048,10 +1090,11 @@ public class DatabaseManager {
             UPDATE words SET level = ?, difficulty = ?, topic = ?, subtopic = ?, exam_tags = ?, part_of_speech = ?, phonetic = ?, translation = ?, example = ?, example_translation = ? WHERE word = ?;
             """
             
-            var insertStmt: OpaquePointer? = nil
-            var updateStmt: OpaquePointer? = nil
-            let canInsert = (sqlite3_prepare_v2(db, insertStatementString, -1, &insertStmt, nil) == SQLITE_OK)
-            let canUpdate = (sqlite3_prepare_v2(db, updateStatementString, -1, &updateStmt, nil) == SQLITE_OK)
+            guard sqlite3_prepare_v2(db, insertStatementString, -1, &insertStmt, nil) == SQLITE_OK,
+                  sqlite3_prepare_v2(db, updateStatementString, -1, &updateStmt, nil) == SQLITE_OK else {
+                let errMsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "Unknown error"
+                throw NSError(domain: "DatabaseManager", code: 504, userInfo: [NSLocalizedDescriptionKey: "Failed to prepare insert/update statement: \(errMsg)"])
+            }
             
             let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
             
@@ -1075,7 +1118,7 @@ public class DatabaseManager {
                     let examTags = fields.count >= 11 ? fields[9] : "TOEIC"
                     let pos = fields.count >= 11 ? fields[10] : ""
                     
-                    if canInsert, let stmt = insertStmt {
+                    if let stmt = insertStmt {
                         sqlite3_bind_text(stmt, 1, word, -1, SQLITE_TRANSIENT)
                         sqlite3_bind_text(stmt, 2, phonetic, -1, SQLITE_TRANSIENT)
                         sqlite3_bind_text(stmt, 3, translation, -1, SQLITE_TRANSIENT)
@@ -1091,7 +1134,7 @@ public class DatabaseManager {
                         sqlite3_reset(stmt)
                     }
                     
-                    if canUpdate, let stmt = updateStmt {
+                    if let stmt = updateStmt {
                         sqlite3_bind_text(stmt, 1, level, -1, SQLITE_TRANSIENT)
                         sqlite3_bind_int(stmt, 2, Int32(difficulty))
                         sqlite3_bind_text(stmt, 3, topic, -1, SQLITE_TRANSIENT)
@@ -1113,10 +1156,20 @@ public class DatabaseManager {
             
             if let stmt = insertStmt { sqlite3_finalize(stmt) }
             if let stmt = updateStmt { sqlite3_finalize(stmt) }
-            sqlite3_exec(db, "COMMIT;", nil, nil, nil)
+            insertStmt = nil
+            updateStmt = nil
+            
+            if sqlite3_exec(db, "COMMIT;", nil, nil, nil) != SQLITE_OK {
+                let errMsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "Unknown error"
+                throw NSError(domain: "DatabaseManager", code: 505, userInfo: [NSLocalizedDescriptionKey: "Failed to commit transaction: \(errMsg)"])
+            }
             print("Successfully imported/enriched \(count) TOEIC words in single batch transaction.")
         } catch {
-            print("Failed to read TOEIC CSV: \(error)")
+            if let stmt = insertStmt { sqlite3_finalize(stmt) }
+            if let stmt = updateStmt { sqlite3_finalize(stmt) }
+            sqlite3_exec(db, "ROLLBACK;", nil, nil, nil)
+            print("CRITICAL: TOEIC migration failed, transaction rolled back cleanly: \(error)")
+            throw error
         }
     }
     
