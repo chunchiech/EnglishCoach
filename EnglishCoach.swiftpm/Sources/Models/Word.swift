@@ -1,5 +1,53 @@
 import Foundation
 
+public enum ToeicTarget: String, CaseIterable, Identifiable, Codable {
+    case basic = "toeic_basic"
+    case advanced = "toeic_advanced"
+    case gold = "toeic_gold"
+    
+    public var id: String { rawValue }
+    public var rawLevel: String { rawValue }
+    
+    public var displayName: String {
+        switch self {
+        case .basic: return "550+ 基礎"
+        case .advanced: return "750+ 進階"
+        case .gold: return "860+ 金證"
+        }
+    }
+    
+    public var shortScore: String {
+        switch self {
+        case .basic: return "550+"
+        case .advanced: return "750+"
+        case .gold: return "860+"
+        }
+    }
+    
+    public var targetScoreString: String {
+        shortScore
+    }
+    
+    public static func from(rawString: String) -> ToeicTarget {
+        switch rawString {
+        case "toeic_basic", "Beginner", "550+":
+            return .basic
+        case "toeic_advanced", "Intermediate", "750+":
+            return .advanced
+        case "toeic_gold", "Advanced", "860+":
+            return .gold
+        default:
+            if rawString.contains("860") || rawString.contains("金證") || rawString.lowercased().contains("gold") {
+                return .gold
+            } else if rawString.contains("750") || rawString.contains("進階") || rawString.lowercased().contains("advanced") {
+                return .advanced
+            } else {
+                return .basic
+            }
+        }
+    }
+}
+
 public struct Word: Identifiable, Codable, Hashable {
     public let id: Int
     public let word: String
@@ -19,29 +67,23 @@ public struct Word: Identifiable, Codable, Hashable {
     public var nextReviewDate: String?
     
     // TOEIC 3-Tier Target Level
-    public static let kLevelBasic = "toeic_basic"
-    public static let kLevelAdvanced = "toeic_advanced"
-    public static let kLevelGold = "toeic_gold"
+    public static let kLevelBasic = ToeicTarget.basic.rawValue
+    public static let kLevelAdvanced = ToeicTarget.advanced.rawValue
+    public static let kLevelGold = ToeicTarget.gold.rawValue
     
     // Target Level ("toeic_basic", "toeic_advanced", "toeic_gold", backwards-compatible with legacy levels)
     public var level: String
     
+    public var toeicTarget: ToeicTarget {
+        ToeicTarget.from(rawString: level)
+    }
+    
     public var normalizedLevel: String {
-        switch level {
-        case "Beginner": return Self.kLevelBasic
-        case "Intermediate": return Self.kLevelAdvanced
-        case "Advanced": return Self.kLevelGold
-        default: return level
-        }
+        toeicTarget.rawValue
     }
     
     public var displayLevelName: String {
-        switch normalizedLevel {
-        case Self.kLevelBasic: return "550+ 基礎"
-        case Self.kLevelAdvanced: return "750+ 進階"
-        case Self.kLevelGold: return "860+ 金證"
-        default: return level
-        }
+        toeicTarget.displayName
     }
     
     // Metadata fields

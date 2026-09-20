@@ -8,11 +8,17 @@ public struct DailyLearningView: View {
     @State private var isCardFlipped = false
     @State private var showCompletionView = false
     @State private var showPaywall = false
+    @State private var isLoading = true
     @AppStorage("hasSeenLearningGuide") private var hasSeenLearningGuide = false
     @State private var showLearningGuide = false
     
     @StateObject private var premiumManager = PremiumManager.shared
     @StateObject private var practiceManager = DailyPracticeManager.shared
+    @ObservedObject private var onboardingPrefs = PersonalizedOnboardingPreferences.shared
+    
+    private var scenarioDisplayText: String? {
+        onboardingPrefs.getScenarioDisplayText()
+    }
     
     public var onComplete: () -> Void
     public var onStartQuiz: (() -> Void)?
@@ -28,7 +34,7 @@ public struct DailyLearningView: View {
                 Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
-                if words.isEmpty {
+                if isLoading {
                     VStack {
                         ProgressView()
                             .scaleEffect(1.5)
@@ -37,12 +43,26 @@ public struct DailyLearningView: View {
                             .foregroundColor(.secondary)
                             .padding(.top, 16)
                     }
+                } else if words.isEmpty {
+                    tierCompletedScreen
                 } else if showCompletionView {
                     completionScreen
                 } else {
                     VStack(spacing: 20) {
                         // Progress Header
                         VStack(spacing: 8) {
+                            if let scenarioText = scenarioDisplayText {
+                                HStack(spacing: 4) {
+                                    Text(scenarioText)
+                                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.85)
+                                    Spacer()
+                                }
+                                .padding(.bottom, 2)
+                            }
+                            
                             HStack {
                                 Text("卡片 \(currentIndex + 1) / \(words.count)")
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -196,9 +216,88 @@ public struct DailyLearningView: View {
     }
     
     private func loadWords() {
+        isLoading = true
         practiceManager.checkAndResetDailyIfNeeded()
         words = DatabaseManager.shared.getTodayWords(isPremium: premiumManager.isPremium)
         currentIndex = 0
+        isLoading = false
+    }
+    
+    @ViewBuilder
+    private var tierCompletedScreen: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.12))
+                    .frame(width: 120, height: 120)
+                
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.orange, .yellow],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            
+            VStack(spacing: 12) {
+                Text("🎉 本目標等級單字已全部學完！")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                
+                let currentTarget = ToeicTarget.from(rawString: UserDefaults.standard.string(forKey: "user_level") ?? onboardingPrefs.recommendedLevel)
+                Text("恭喜您！\(currentTarget.displayName) 的單字已全部學習完畢。\n建議前往「智慧複習中心」鞏固記憶，或切換至其他目標等級繼續挑戰！")
+                    .font(.system(size: 15, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(6)
+                    .padding(.horizontal, 32)
+            }
+            
+            Spacer()
+            
+            VStack(spacing: 12) {
+                if DatabaseManager.shared.getReviewList().count > 0 {
+                    Button(action: {
+                        dismiss()
+                        onComplete()
+                    }) {
+                        Text("前往智慧複習中心 ➜")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [.purple, .blue],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                    }
+                }
+                
+                Button(action: {
+                    dismiss()
+                }) {
+                    Text("返回首頁")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(.purple)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.purple.opacity(0.1))
+                        .cornerRadius(16)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+        }
     }
     
     private func handleNext() {

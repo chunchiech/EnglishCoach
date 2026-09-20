@@ -12,6 +12,14 @@ public struct LearningScenario: Identifiable, Hashable {
         self.subtitle = subtitle
         self.icon = icon
     }
+    
+    public var cleanTitle: String {
+        let parts = title.components(separatedBy: " ")
+        if parts.count > 1 {
+            return parts.dropFirst().joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        }
+        return title.trimmingCharacters(in: .whitespaces)
+    }
 }
 
 public class PersonalizedOnboardingPreferences: ObservableObject {
@@ -69,12 +77,20 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
     @Published public var targetScore: String {
         didSet {
             UserDefaults.standard.set(targetScore, forKey: Self.targetScoreKey)
+            let target = ToeicTarget.from(rawString: targetScore)
+            if recommendedLevel != target.rawValue {
+                recommendedLevel = target.rawValue
+            }
         }
     }
     
     @Published public var recommendedLevel: String {
         didSet {
             UserDefaults.standard.set(recommendedLevel, forKey: Self.recommendedLevelKey)
+            let target = ToeicTarget.from(rawString: recommendedLevel)
+            if targetScore != target.targetScoreString {
+                targetScore = target.targetScoreString
+            }
         }
     }
     
@@ -91,22 +107,13 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
     public init() {
         self.selectedScenarioIds = UserDefaults.standard.stringArray(forKey: Self.selectedScenariosKey) ?? ["business", "meetings"]
         let rawScore = UserDefaults.standard.string(forKey: Self.targetScoreKey) ?? "550+"
-        if rawScore == "400+" || rawScore == "600+" {
-            self.targetScore = "550+"
-        } else if rawScore == "730+" || rawScore == "785+" {
-            self.targetScore = "750+"
-        } else if rawScore == "900+" {
-            self.targetScore = "860+"
-        } else {
-            self.targetScore = rawScore
-        }
-        let rawLvl = UserDefaults.standard.string(forKey: Self.recommendedLevelKey) ?? Word.kLevelBasic
-        switch rawLvl {
-        case "Beginner": self.recommendedLevel = Word.kLevelBasic
-        case "Intermediate": self.recommendedLevel = Word.kLevelAdvanced
-        case "Advanced": self.recommendedLevel = Word.kLevelGold
-        default: self.recommendedLevel = rawLvl
-        }
+        let targetFromScore = ToeicTarget.from(rawString: rawScore)
+        self.targetScore = targetFromScore.targetScoreString
+        
+        let rawLvl = UserDefaults.standard.string(forKey: Self.recommendedLevelKey) ?? (UserDefaults.standard.string(forKey: "user_level") ?? targetFromScore.rawValue)
+        let targetFromLvl = ToeicTarget.from(rawString: rawLvl)
+        self.recommendedLevel = targetFromLvl.rawValue
+        
         self.placementScore = UserDefaults.standard.integer(forKey: Self.placementScoreKey)
     }
     
@@ -114,11 +121,12 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
         if let s = score {
             self.placementScore = s
         }
-        if let lvl = recommendedLevel {
-            let normalized = (lvl == "Beginner" ? Word.kLevelBasic : (lvl == "Intermediate" ? Word.kLevelAdvanced : (lvl == "Advanced" ? Word.kLevelGold : lvl)))
-            self.recommendedLevel = normalized
-            UserDefaults.standard.set(normalized, forKey: "user_level")
-        }
+        let lvlToSet = recommendedLevel ?? self.recommendedLevel
+        let target = ToeicTarget.from(rawString: lvlToSet)
+        self.recommendedLevel = target.rawValue
+        self.targetScore = target.targetScoreString
+        UserDefaults.standard.set(target.rawValue, forKey: "user_level")
+        DatabaseManager.shared.clearTodayWordsCache()
         UserDefaults.standard.set(true, forKey: Self.onboardingCompletedKey)
     }
     
@@ -133,30 +141,32 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
         }
     }
     
+    public func moveScenarioUp(_ id: String) {
+        guard let index = selectedScenarioIds.firstIndex(of: id), index > 0 else { return }
+        selectedScenarioIds.swapAt(index, index - 1)
+    }
+    
+    public func moveScenarioDown(_ id: String) {
+        guard let index = selectedScenarioIds.firstIndex(of: id), index < selectedScenarioIds.count - 1 else { return }
+        selectedScenarioIds.swapAt(index, index + 1)
+    }
+    
     public func calculateRecommendedLevel(correctCount: Int) -> String {
         if correctCount >= 16 {
-            return Word.kLevelGold
+            return ToeicTarget.gold.rawValue
         } else if correctCount >= 10 {
-            return Word.kLevelAdvanced
+            return ToeicTarget.advanced.rawValue
         } else {
-            return Word.kLevelBasic
+            return ToeicTarget.basic.rawValue
         }
     }
     
     public func localizedLevelName(_ level: String) -> String {
-        switch level {
-        case "Beginner", Word.kLevelBasic: return "550+ 基礎"
-        case "Intermediate", Word.kLevelAdvanced: return "750+ 進階"
-        case "Advanced", Word.kLevelGold: return "860+ 金證"
-        default: return level
-        }
+        ToeicTarget.from(rawString: level).displayName
     }
     
     public func targetGoalTitle(for score: String) -> String {
-        if let g = Self.targetGoals.first(where: { $0.id == score }) {
-            return g.title
-        }
-        return score
+        ToeicTarget.from(rawString: score).displayName
     }
     
     public static func matchesScenario(scenarioId: String, topic: String, subtopic: String) -> Bool {
@@ -220,22 +230,9 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
     }
     
     public func getPathWeightMultiplier(level: String) -> Double {
-        let currentLevel = UserDefaults.standard.string(forKey: "user_level") ?? (recommendedLevel.isEmpty ? Word.kLevelBasic : recommendedLevel)
-        let userTier: String
-        switch currentLevel {
-        case "Beginner", Word.kLevelBasic: userTier = Word.kLevelBasic
-        case "Intermediate", Word.kLevelAdvanced: userTier = Word.kLevelAdvanced
-        case "Advanced", Word.kLevelGold: userTier = Word.kLevelGold
-        default: userTier = Word.kLevelBasic
-        }
-        
-        let wordTier: String
-        switch level {
-        case "Beginner", Word.kLevelBasic: wordTier = Word.kLevelBasic
-        case "Intermediate", Word.kLevelAdvanced: wordTier = Word.kLevelAdvanced
-        case "Advanced", Word.kLevelGold: wordTier = Word.kLevelGold
-        default: wordTier = Word.kLevelBasic
-        }
+        let currentLevel = UserDefaults.standard.string(forKey: "user_level") ?? (recommendedLevel.isEmpty ? ToeicTarget.basic.rawValue : recommendedLevel)
+        let userTier = ToeicTarget.from(rawString: currentLevel).rawValue
+        let wordTier = ToeicTarget.from(rawString: level).rawValue
         
         // Target path gets 3.0x
         if userTier == wordTier {
@@ -243,27 +240,21 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
         }
         
         // Adjacent gets 1.0x, Non-target distant gets 0.2x
-        if userTier == Word.kLevelBasic {
-            return wordTier == Word.kLevelAdvanced ? 1.0 : 0.2
-        } else if userTier == Word.kLevelAdvanced {
+        if userTier == ToeicTarget.basic.rawValue {
+            return wordTier == ToeicTarget.advanced.rawValue ? 1.0 : 0.2
+        } else if userTier == ToeicTarget.advanced.rawValue {
             return 1.0 // Both Basic and Gold are adjacent to Advanced
-        } else { // Word.kLevelGold
-            return wordTier == Word.kLevelAdvanced ? 1.0 : 0.2
+        } else { // ToeicTarget.gold
+            return wordTier == ToeicTarget.advanced.rawValue ? 1.0 : 0.2
         }
     }
     
     public func getDifficultyWeightMultiplier(difficulty: Int) -> Double {
-        let currentLevel = UserDefaults.standard.string(forKey: "user_level") ?? (recommendedLevel.isEmpty ? Word.kLevelBasic : recommendedLevel)
-        let userTier: String
-        switch currentLevel {
-        case "Beginner", Word.kLevelBasic: userTier = Word.kLevelBasic
-        case "Intermediate", Word.kLevelAdvanced: userTier = Word.kLevelAdvanced
-        case "Advanced", Word.kLevelGold: userTier = Word.kLevelGold
-        default: userTier = Word.kLevelBasic
-        }
+        let currentLevel = UserDefaults.standard.string(forKey: "user_level") ?? (recommendedLevel.isEmpty ? ToeicTarget.basic.rawValue : recommendedLevel)
+        let userTier = ToeicTarget.from(rawString: currentLevel).rawValue
         
         switch userTier {
-        case Word.kLevelBasic:
+        case ToeicTarget.basic.rawValue:
             // 550+ 聚焦 Lv.1~3
             switch difficulty {
             case 1: return 1.6
@@ -272,7 +263,7 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
             case 4: return 0.5
             default: return 0.2
             }
-        case Word.kLevelAdvanced:
+        case ToeicTarget.advanced.rawValue:
             // 750+ 均衡涵蓋 Lv.2~4
             switch difficulty {
             case 1: return 0.7
@@ -281,7 +272,7 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
             case 4: return 1.3
             default: return 0.7
             }
-        case Word.kLevelGold:
+        case ToeicTarget.gold.rawValue:
             // 860+ 密集涵蓋 Lv.4~5
             switch difficulty {
             case 1: return 0.2
@@ -304,5 +295,23 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
     
     public func calculateTotalWeight(difficulty: Int, topic: String, subtopic: String) -> Double {
         return calculateTotalWeight(level: Word.kLevelBasic, difficulty: difficulty, topic: topic, subtopic: subtopic)
+    }
+    
+    public func getScenarioDisplayText() -> String? {
+        let ids = selectedScenarioIds
+        guard !ids.isEmpty else { return nil }
+        
+        let scenarioMap = Dictionary(uniqueKeysWithValues: Self.availableScenarios.map { ($0.id, $0.cleanTitle) })
+        let names = ids.compactMap { scenarioMap[$0] }
+        guard !names.isEmpty else { return nil }
+        
+        if names.count == 1 {
+            return "🎯 學習情境：\(names[0])"
+        } else if names.count == 2 {
+            return "🎯 學習情境：\(names[0]) · \(names[1])"
+        } else {
+            let remaining = names.count - 2
+            return "🎯 學習情境：\(names[0]) · \(names[1]) +\(remaining)"
+        }
     }
 }

@@ -266,8 +266,25 @@ public class DatabaseManager {
     }
     
     private let SELECT_FIELDS = "id, word, phonetic, translation, example, example_translation, learned, learned_date, correct_count, wrong_count, easiness_factor, interval_days, repetition_count, next_review_date, level, difficulty, topic, subtopic, exam_tags, part_of_speech"
-    private let kTodayWordsDatePrefix = "englishcoach_today_words_date_"
-    private let kTodayWordsIdsPrefix = "englishcoach_today_words_ids_"
+    public let kTodayWordsDatePrefix = "englishcoach_today_words_date_"
+    public let kTodayWordsIdsPrefix = "englishcoach_today_words_ids_"
+    
+    public func clearTodayWordsCache(for level: String? = nil) {
+        if let level = level {
+            let normalized = ToeicTarget.from(rawString: level).rawValue
+            UserDefaults.standard.removeObject(forKey: "\(kTodayWordsDatePrefix)\(normalized)")
+            UserDefaults.standard.removeObject(forKey: "\(kTodayWordsIdsPrefix)\(normalized)")
+        } else {
+            for target in ToeicTarget.allCases {
+                UserDefaults.standard.removeObject(forKey: "\(kTodayWordsDatePrefix)\(target.rawValue)")
+                UserDefaults.standard.removeObject(forKey: "\(kTodayWordsIdsPrefix)\(target.rawValue)")
+            }
+            for legacy in ["Beginner", "Intermediate", "Advanced"] {
+                UserDefaults.standard.removeObject(forKey: "\(kTodayWordsDatePrefix)\(legacy)")
+                UserDefaults.standard.removeObject(forKey: "\(kTodayWordsIdsPrefix)\(legacy)")
+            }
+        }
+    }
     
     private func fetchWords(query: String, bindings: [String] = []) -> [Word] {
         var words: [Word] = []
@@ -380,21 +397,12 @@ public class DatabaseManager {
         
         let today = getTodayDateString()
         let prefs = PersonalizedOnboardingPreferences.shared
-        let rawLvl = UserDefaults.standard.string(forKey: "user_level") ?? (prefs.recommendedLevel.isEmpty ? "toeic_basic" : prefs.recommendedLevel)
+        let rawLvl = UserDefaults.standard.string(forKey: "user_level") ?? prefs.recommendedLevel
+        let toeicTarget = ToeicTarget.from(rawString: rawLvl)
+        let targetLevel = toeicTarget.rawValue
         
-        let recommendedLvl: String
-        switch rawLvl {
-        case "Beginner": recommendedLvl = "toeic_basic"
-        case "Intermediate": recommendedLvl = "toeic_advanced"
-        case "Advanced": recommendedLvl = "toeic_gold"
-        default: recommendedLvl = rawLvl.isEmpty ? "toeic_basic" : rawLvl
-        }
-        
-        let effectiveLevel = isPremium ? recommendedLvl : "toeic_basic"
-        let maxIdClause = isPremium ? "" : " AND id <= 300"
-        
-        let dateKey = "\(kTodayWordsDatePrefix)\(effectiveLevel)"
-        let idsKey = "\(kTodayWordsIdsPrefix)\(effectiveLevel)"
+        let dateKey = "\(kTodayWordsDatePrefix)\(targetLevel)"
+        let idsKey = "\(kTodayWordsIdsPrefix)\(targetLevel)"
         
         let savedDate = UserDefaults.standard.string(forKey: dateKey)
         var selectedIds: [Int] = []
@@ -405,8 +413,10 @@ public class DatabaseManager {
         var words: [Word] = []
         if !selectedIds.isEmpty {
             let placeholders = selectedIds.map { _ in "?" }.joined(separator: ",")
-            let query = "SELECT \(SELECT_FIELDS) FROM words WHERE id IN (\(placeholders));"
-            let fetched = fetchWords(query: query, bindings: selectedIds.map(String.init))
+            let query = "SELECT \(SELECT_FIELDS) FROM words WHERE id IN (\(placeholders)) AND level = ?;"
+            var bindings = selectedIds.map(String.init)
+            bindings.append(targetLevel)
+            let fetched = fetchWords(query: query, bindings: bindings)
             let dict = Dictionary(uniqueKeysWithValues: fetched.map { ($0.id, $0) })
             words = selectedIds.compactMap { dict[$0] }
         }
@@ -414,12 +424,10 @@ public class DatabaseManager {
         if words.count < targetCount {
             var selectedIdSet = Set(words.map { $0.id })
             
-            // Tier 1: Due Review (SM-2 Spaced Repetition) Absolute Priority
-            // k_due = min(dueCount, targetCount - words.count)
-            // If dueCount >= 10, all 10 words can be Due Review words with zero artificial caps.
+            // Tier 1: Due Review (SM-2 Spaced Repetition) restricted strictly to current target level
             let stillNeededForDue = targetCount - words.count
-            let dueQuery = "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1 AND next_review_date <= ?\(maxIdClause) ORDER BY next_review_date ASC, wrong_count DESC;"
-            var dueWords = fetchWords(query: dueQuery, bindings: [today])
+            let dueQuery = "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1 AND next_review_date <= ? AND level = ? ORDER BY next_review_date ASC, wrong_count DESC;"
+            var dueWords = fetchWords(query: dueQuery, bindings: [today, targetLevel])
             dueWords.removeAll { selectedIdSet.contains($0.id) }
             
             if !dueWords.isEmpty {
@@ -431,14 +439,13 @@ public class DatabaseManager {
                 }
             }
             
-            // Tier 2: Weighted Sampling without replacement for remaining slots from Unlearned Pool
-            // Higher weight candidate words have a higher tendency to be selected,
-            // using A-Res weighted reservoir sampling without replacement.
+            // Tier 2: Unlearned Pool strictly restricted to targetLevel
+            // WHERE learned = 0 AND level = ?
             if words.count < targetCount {
                 let remainingSlot = targetCount - words.count
                 
-                let unlearnedQuery = "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0\(maxIdClause);"
-                var unlearnedCandidates = fetchWords(query: unlearnedQuery)
+                let unlearnedQuery = "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 0 AND level = ?;"
+                var unlearnedCandidates = fetchWords(query: unlearnedQuery, bindings: [targetLevel])
                 unlearnedCandidates.removeAll { selectedIdSet.contains($0.id) }
                 
                 if !unlearnedCandidates.isEmpty {
@@ -467,15 +474,9 @@ public class DatabaseManager {
                 }
             }
             
-            // Tier 3: Fallback if unlearned candidate pool is exhausted (all words learned)
-            if words.count < targetCount {
-                let remainingSlot = targetCount - words.count
-                let fallbackQuery = "SELECT \(SELECT_FIELDS) FROM words WHERE learned = 1\(maxIdClause) ORDER BY wrong_count DESC, correct_count ASC;"
-                var fallbackWords = fetchWords(query: fallbackQuery)
-                fallbackWords.removeAll { selectedIdSet.contains($0.id) }
-                let fallbackToAdd = Array(fallbackWords.prefix(remainingSlot))
-                words.append(contentsOf: fallbackToAdd)
-            }
+            // NO automatic tier degradation!
+            // When all words in targetLevel are learned, we do NOT pull words from other levels.
+            // The tier completed state is displayed, and users can review via Review Center.
             
             // Save the stable daily selected word IDs without prematurely mutating SQLite
             UserDefaults.standard.set(today, forKey: dateKey)

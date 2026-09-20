@@ -72,6 +72,8 @@ public struct DashboardView: View {
         }
         .background(Color(.systemGroupedBackground))
         .onAppear {
+            let saved = UserDefaults.standard.string(forKey: "user_level") ?? Word.kLevelBasic
+            userLevel = ToeicTarget.from(rawString: saved).rawValue
             refreshData()
         }
         .task {
@@ -209,6 +211,9 @@ public struct DashboardView: View {
                 return "🎉 今日學習已完成"
             }
         }
+        if todayWords.isEmpty && stats.learnedWords > 0 {
+            return reviewCount > 0 ? "本目標已完成 · 前往複習 ➜" : "🎉 本目標單字已全部學完"
+        }
         return todayProgress > 0 ? "繼續今日學習 ➜" : "開始今日練習"
     }
     
@@ -223,9 +228,13 @@ public struct DashboardView: View {
             } else {
                 showTargetReachedAlert = true
             }
-        } else {
-            activeSheet = .learning
+            return
         }
+        if todayWords.isEmpty && reviewCount > 0 {
+            activeSheet = .review
+            return
+        }
+        activeSheet = .learning
     }
     
     private var dailyGoalCard: some View {
@@ -492,20 +501,21 @@ public struct DashboardView: View {
     private var levelBinding: Binding<String> {
         Binding<String>(
             get: {
-                switch userLevel {
-                case "Beginner": return Word.kLevelBasic
-                case "Intermediate": return Word.kLevelAdvanced
-                case "Advanced": return Word.kLevelGold
-                default: return userLevel
-                }
+                ToeicTarget.from(rawString: userLevel).rawValue
             },
             set: { newLevel in
-                let target = (newLevel == "Intermediate" ? Word.kLevelAdvanced : (newLevel == "Advanced" ? Word.kLevelGold : newLevel))
-                if !premiumManager.isPremium && (target == Word.kLevelAdvanced || target == Word.kLevelGold) {
+                let target = ToeicTarget.from(rawString: newLevel)
+                if !premiumManager.isPremium && (target == .advanced || target == .gold) {
                     activeSheet = .paywall
                 } else {
-                    userLevel = target
-                    UserDefaults.standard.set(target, forKey: "user_level")
+                    userLevel = target.rawValue
+                    UserDefaults.standard.set(target.rawValue, forKey: "user_level")
+                    
+                    let prefs = PersonalizedOnboardingPreferences.shared
+                    prefs.targetScore = target.targetScoreString
+                    prefs.recommendedLevel = target.rawValue
+                    
+                    DatabaseManager.shared.clearTodayWordsCache()
                     refreshData()
                 }
             }

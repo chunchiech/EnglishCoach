@@ -69,56 +69,8 @@ public struct PersonalizedOnboardingView: View {
             .padding(.top, 10)
             
             ScrollView {
-                VStack(spacing: 12) {
-                    ForEach(PersonalizedOnboardingPreferences.availableScenarios) { scenario in
-                        let isSelected = preferences.selectedScenarioIds.contains(scenario.id)
-                        let priorityIndex = preferences.selectedScenarioIds.firstIndex(of: scenario.id)
-                        
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                preferences.toggleScenario(scenario.id)
-                            }
-                        }) {
-                            HStack(spacing: 16) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(scenario.title)
-                                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                                            .foregroundColor(.primary)
-                                        
-                                        if let idx = priorityIndex {
-                                            Text("優先 \(idx + 1)")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 2)
-                                                .background(Color.purple.opacity(0.15))
-                                                .foregroundColor(.purple)
-                                                .cornerRadius(8)
-                                        }
-                                    }
-                                    
-                                    Text(scenario.subtitle)
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Spacer()
-                                
-                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(isSelected ? .purple : .secondary.opacity(0.5))
-                            }
-                            .padding(16)
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .cornerRadius(16)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(isSelected ? Color.purple : Color.clear, lineWidth: 2)
-                            )
-                        }
-                    }
-                }
-                .padding(.horizontal, 24)
+                ScenarioSelectionListView(preferences: preferences)
+                    .padding(.horizontal, 24)
             }
             
             // Next Button
@@ -334,5 +286,135 @@ public struct PersonalizedOnboardingView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
         }
+    }
+}
+
+// MARK: - Reusable Scenario Selection List View
+public struct ScenarioSelectionListView: View {
+    @ObservedObject public var preferences: PersonalizedOnboardingPreferences
+    
+    public init(preferences: PersonalizedOnboardingPreferences = .shared) {
+        self.preferences = preferences
+    }
+    
+    public var body: some View {
+        VStack(spacing: 12) {
+            ForEach(PersonalizedOnboardingPreferences.availableScenarios) { scenario in
+                let isSelected = preferences.selectedScenarioIds.contains(scenario.id)
+                let priorityIndex = preferences.selectedScenarioIds.firstIndex(of: scenario.id)
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        preferences.toggleScenario(scenario.id)
+                    }
+                }) {
+                    HStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Text(scenario.title)
+                                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                
+                                if let idx = priorityIndex {
+                                    HStack(spacing: 4) {
+                                        Text("優先 \(idx + 1)")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 2)
+                                            .background(Color.purple.opacity(0.15))
+                                            .foregroundColor(.purple)
+                                            .cornerRadius(8)
+                                        
+                                        if preferences.selectedScenarioIds.count > 1 {
+                                            if idx > 0 {
+                                                Button(action: {
+                                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                                        preferences.moveScenarioUp(scenario.id)
+                                                    }
+                                                }) {
+                                                    Image(systemName: "chevron.up")
+                                                        .font(.system(size: 10, weight: .bold))
+                                                        .foregroundColor(.purple)
+                                                        .frame(width: 22, height: 22)
+                                                        .background(Color.purple.opacity(0.12))
+                                                        .clipShape(Circle())
+                                                }
+                                                .buttonStyle(BorderlessButtonStyle())
+                                            }
+                                            
+                                            if idx < preferences.selectedScenarioIds.count - 1 {
+                                                Button(action: {
+                                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                                        preferences.moveScenarioDown(scenario.id)
+                                                    }
+                                                }) {
+                                                    Image(systemName: "chevron.down")
+                                                        .font(.system(size: 10, weight: .bold))
+                                                        .foregroundColor(.purple)
+                                                        .frame(width: 22, height: 22)
+                                                        .background(Color.purple.opacity(0.12))
+                                                        .clipShape(Circle())
+                                                }
+                                                .buttonStyle(BorderlessButtonStyle())
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Text(scenario.subtitle)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 22))
+                            .foregroundColor(isSelected ? .purple : .secondary.opacity(0.5))
+                    }
+                    .padding(16)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(isSelected ? Color.purple : Color.clear, lineWidth: 2)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+    }
+}
+
+// MARK: - Learning Scenarios Settings View
+public struct LearningScenariosSettingsView: View {
+    @ObservedObject private var preferences = PersonalizedOnboardingPreferences.shared
+    
+    public init() {}
+    
+    public var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                VStack(spacing: 8) {
+                    Text("自訂您的學習情境")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                    Text("可複選，已按您的選擇順序排列優先級。\n系統將依據您設定的情境優先推薦相關高頻單字。")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
+                }
+                .padding(.top, 16)
+                
+                ScenarioSelectionListView(preferences: preferences)
+                    .padding(.horizontal, 20)
+            }
+            .padding(.bottom, 30)
+        }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .navigationTitle("學習情境")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

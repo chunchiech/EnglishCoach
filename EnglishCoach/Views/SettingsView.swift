@@ -8,6 +8,7 @@ public struct SettingsView: View {
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var premiumManager = PremiumManager.shared
     @StateObject private var practiceManager = DailyPracticeManager.shared
+    @ObservedObject private var onboardingPrefs = PersonalizedOnboardingPreferences.shared
     
     @State private var showPaywall = false
     @State private var showingAlert = false
@@ -165,6 +166,24 @@ public struct SettingsView: View {
             header: Text("學習"),
             footer: learningFooter
         ) {
+            // 學習情境
+            NavigationLink(destination: LearningScenariosSettingsView()) {
+                HStack(spacing: 12) {
+                    Image(systemName: "briefcase.fill")
+                        .foregroundColor(.purple)
+                        .font(.system(size: 18))
+                    Text("學習情境")
+                        .font(.system(size: 16, weight: .medium))
+                    Spacer()
+                    if let text = onboardingPrefs.getScenarioDisplayText() {
+                        Text(text.replacingOccurrences(of: "🎯 學習情境：", with: ""))
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            
             // 每日學習提醒
             Toggle(isOn: Binding(
                 get: { notificationManager.isReminderEnabled },
@@ -292,11 +311,11 @@ public struct SettingsView: View {
     @ViewBuilder
     private var learningFooter: some View {
         if premiumManager.isPremium {
-            Text("Premium 尊榮會員可自由調整每日目標題數（5 / 10 / 20 / 30 / 50 / 100 / Unlimited），修改後立即生效。")
+            Text("自訂學習情境將於下一次新單字選題時生效。Premium 尊榮會員可自由調整每日目標題數（5 / 10 / 20 / 30 / 50 / 100 / Unlimited），修改後立即生效。")
                 .font(.caption)
                 .foregroundColor(.secondary)
         } else {
-            Text("免費版每日固定享有 10 題練習。升級 Premium 可自訂每日學習量，或設定為不限題數。")
+            Text("自訂學習情境將於下一次新單字選題時生效。免費版每日固定享有 10 題練習。升級 Premium 可自訂每日學習量，或設定為不限題數。")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
