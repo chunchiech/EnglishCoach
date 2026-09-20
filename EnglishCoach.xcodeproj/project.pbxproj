@@ -29,6 +29,7 @@
 		B48B8BB128A0EDA70FBC2C7C /* PremiumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4434DC84CBC15302CFDB071C /* PremiumManager.swift */; };
 		B8063F9940D5D68AEB8FAD9B /* ProgressRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 741DE1B5CBC5DE284696EBF7 /* ProgressRing.swift */; };
 		B8B6B48FD75AB6A833404A8C /* QuizView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F372718540E9F113946EFF7C /* QuizView.swift */; };
+		C3AC864484620E67455626BF /* toeic_3600.csv in Resources */ = {isa = PBXBuildFile; fileRef = 32066B98578DFD6EE8578840 /* toeic_3600.csv */; };
 		F159F68CA0D83BA022FA7F05 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 92F463A39CFB9423B1901974 /* Assets.xcassets */; };
 		F4437091189F0E4AA84AADEA /* Word.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFD81313DDB07B03797455D /* Word.swift */; };
 		FCB13D56792F4C83390106E1 /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1253DD78C41E1FEB25E49D3 /* DatabaseManager.swift */; };
@@ -40,7 +41,8 @@
 		0FCF3194105683C59007F955 /* PremiumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumView.swift; sourceTree = "<group>"; };
 		1E2D3582F7F24A99DBD357AB /* NotificationOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationOnboardingView.swift; sourceTree = "<group>"; };
 		20980B9DE5224223223E5174 /* DailyPracticeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPracticeManager.swift; sourceTree = "<group>"; };
-		2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = toeic_3000.csv; sourceTree = "<group>"; };
+		2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */ = {isa = PBXFileReference; path = toeic_3000.csv; sourceTree = "<group>"; };
+		32066B98578DFD6EE8578840 /* toeic_3600.csv */ = {isa = PBXFileReference; path = toeic_3600.csv; sourceTree = "<group>"; };
 		4434DC84CBC15302CFDB071C /* PremiumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumManager.swift; sourceTree = "<group>"; };
 		482D169515229EA7A557BC74 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		4B2D0C89FE545EBAC5CD886D /* PlacementQuestion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementQuestion.swift; sourceTree = "<group>"; };
@@ -58,9 +60,9 @@
 		AED5335C57AD5C97351CB3F4 /* DailyLearningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLearningView.swift; sourceTree = "<group>"; };
 		B0F90F1690D7128D5DFF4EB8 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		C25C30ECAF199003E37CC3F6 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
-		C4E5AA6E675657B47B14BB76 /* EnglishCoach.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = EnglishCoach.storekit; sourceTree = "<group>"; };
+		C4E5AA6E675657B47B14BB76 /* EnglishCoach.storekit */ = {isa = PBXFileReference; path = EnglishCoach.storekit; sourceTree = "<group>"; };
 		F372718540E9F113946EFF7C /* QuizView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizView.swift; sourceTree = "<group>"; };
-		F82FA1F03293BF5E590C6523 /* EnglishCoach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EnglishCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F82FA1F03293BF5E590C6523 /* EnglishCoach.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EnglishCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -131,6 +133,7 @@
 			children = (
 				C4E5AA6E675657B47B14BB76 /* EnglishCoach.storekit */,
 				2325E0E61A8FD42E0F9274EA /* toeic_3000.csv */,
+				32066B98578DFD6EE8578840 /* toeic_3600.csv */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -196,7 +199,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2660;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					9A703759BCC344E67CCDB350 = {
 						DevelopmentTeam = 2P8SRV3VG2;
@@ -231,6 +234,7 @@
 				F159F68CA0D83BA022FA7F05 /* Assets.xcassets in Resources */,
 				7D6F089A2526B3F3B8D0B964 /* EnglishCoach.storekit in Resources */,
 				5B71EE51CE78560419A4895E /* toeic_3000.csv in Resources */,
+				C3AC864484620E67455626BF /* toeic_3600.csv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -275,7 +279,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2P8SRV3VG2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "EnglishCoach - 多益單字與口說教練";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -286,7 +291,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.andy.EnglishCoach;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -299,7 +304,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2P8SRV3VG2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "EnglishCoach - 多益單字與口說教練";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -310,7 +316,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.andy.EnglishCoach;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -352,10 +358,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 2P8SRV3VG2;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -375,7 +379,6 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -417,10 +420,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 2P8SRV3VG2;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -433,7 +434,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;

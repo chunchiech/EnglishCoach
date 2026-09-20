@@ -258,18 +258,18 @@ public struct LibraryView: View {
     
     private func translatedLevel(_ level: String) -> String {
         switch level {
-        case "Beginner": return "初級"
-        case "Intermediate": return "中級"
-        case "Advanced": return "高級"
+        case "Beginner", "toeic_basic": return "550+ 基礎"
+        case "Intermediate", "toeic_advanced": return "750+ 進階"
+        case "Advanced", "toeic_gold": return "860+ 金證"
         default: return level
         }
     }
     
     private func levelColor(_ level: String) -> Color {
         switch level {
-        case "Beginner": return .green
-        case "Intermediate": return .orange
-        case "Advanced": return .red
+        case "Beginner", "toeic_basic": return .blue
+        case "Intermediate", "toeic_advanced": return .orange
+        case "Advanced", "toeic_gold": return Color(red: 0.85, green: 0.65, blue: 0.13)
         default: return .secondary
         }
     }

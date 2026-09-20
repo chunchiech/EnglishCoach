@@ -51,7 +51,7 @@ public class DatabaseManager {
             interval_days INTEGER DEFAULT 0,
             repetition_count INTEGER DEFAULT 0,
             next_review_date TEXT,
-            level TEXT DEFAULT 'Beginner',
+            level TEXT DEFAULT 'toeic_basic',
             difficulty INTEGER DEFAULT 1,
             topic TEXT DEFAULT '',
             subtopic TEXT DEFAULT '',
@@ -80,7 +80,7 @@ public class DatabaseManager {
         translation: String,
         example: String,
         exampleTranslation: String,
-        level: String = "Beginner",
+        level: String = "toeic_basic",
         difficulty: Int = 1,
         topic: String = "",
         subtopic: String = "",
@@ -88,7 +88,7 @@ public class DatabaseManager {
         partOfSpeech: String = ""
     ) {
         let insertStatementString = """
-        INSERT INTO words (word, phonetic, translation, example, example_translation, level, difficulty, topic, subtopic, exam_tags, part_of_speech)
+        INSERT OR IGNORE INTO words (word, phonetic, translation, example, example_translation, level, difficulty, topic, subtopic, exam_tags, part_of_speech)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
         var statement: OpaquePointer? = nil
@@ -108,9 +108,7 @@ public class DatabaseManager {
             sqlite3_bind_text(statement, 10, examTags, -1, SQLITE_TRANSIENT)
             sqlite3_bind_text(statement, 11, partOfSpeech, -1, SQLITE_TRANSIENT)
             
-            if sqlite3_step(statement) != SQLITE_DONE {
-                // Ignore duplicate insert warnings silently during seeding / importing
-            }
+            _ = sqlite3_step(statement)
         } else {
             print("INSERT statement could not be prepared.")
         }
@@ -119,6 +117,7 @@ public class DatabaseManager {
     
     private func updateWordMetadata(
         word: String,
+        level: String,
         difficulty: Int,
         topic: String,
         subtopic: String,
@@ -126,17 +125,18 @@ public class DatabaseManager {
         partOfSpeech: String
     ) {
         let updateStatement = """
-        UPDATE words SET difficulty = ?, topic = ?, subtopic = ?, exam_tags = ?, part_of_speech = ? WHERE word = ?;
+        UPDATE words SET level = ?, difficulty = ?, topic = ?, subtopic = ?, exam_tags = ?, part_of_speech = ? WHERE word = ?;
         """
         var statement: OpaquePointer? = nil
         if sqlite3_prepare_v2(db, updateStatement, -1, &statement, nil) == SQLITE_OK {
             let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-            sqlite3_bind_int(statement, 1, Int32(difficulty))
-            sqlite3_bind_text(statement, 2, topic, -1, SQLITE_TRANSIENT)
-            sqlite3_bind_text(statement, 3, subtopic, -1, SQLITE_TRANSIENT)
-            sqlite3_bind_text(statement, 4, examTags, -1, SQLITE_TRANSIENT)
-            sqlite3_bind_text(statement, 5, partOfSpeech, -1, SQLITE_TRANSIENT)
-            sqlite3_bind_text(statement, 6, word, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 1, level, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_int(statement, 2, Int32(difficulty))
+            sqlite3_bind_text(statement, 3, topic, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 4, subtopic, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 5, examTags, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 6, partOfSpeech, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 7, word, -1, SQLITE_TRANSIENT)
             _ = sqlite3_step(statement)
         }
         sqlite3_finalize(statement)
@@ -310,7 +310,7 @@ public class DatabaseManager {
                 let nextReviewDate = nextReviewDatePtr != nil ? String(cString: nextReviewDatePtr!) : nil
                 
                 let levelPtr = sqlite3_column_text(statement, 14)
-                let level = levelPtr != nil ? String(cString: levelPtr!) : "Beginner"
+                let level = levelPtr != nil ? String(cString: levelPtr!) : "toeic_basic"
                 
                 let difficultyVal = Int(sqlite3_column_int(statement, 15))
                 let difficulty = difficultyVal > 0 ? difficultyVal : 1
@@ -380,8 +380,17 @@ public class DatabaseManager {
         
         let today = getTodayDateString()
         let prefs = PersonalizedOnboardingPreferences.shared
-        let recommendedLvl = prefs.recommendedLevel.isEmpty ? (UserDefaults.standard.string(forKey: "user_level") ?? "Beginner") : prefs.recommendedLevel
-        let effectiveLevel = isPremium ? recommendedLvl : "Beginner"
+        let rawLvl = UserDefaults.standard.string(forKey: "user_level") ?? (prefs.recommendedLevel.isEmpty ? "toeic_basic" : prefs.recommendedLevel)
+        
+        let recommendedLvl: String
+        switch rawLvl {
+        case "Beginner": recommendedLvl = "toeic_basic"
+        case "Intermediate": recommendedLvl = "toeic_advanced"
+        case "Advanced": recommendedLvl = "toeic_gold"
+        default: recommendedLvl = rawLvl.isEmpty ? "toeic_basic" : rawLvl
+        }
+        
+        let effectiveLevel = isPremium ? recommendedLvl : "toeic_basic"
         let maxIdClause = isPremium ? "" : " AND id <= 300"
         
         let dateKey = "\(kTodayWordsDatePrefix)\(effectiveLevel)"
@@ -436,6 +445,7 @@ public class DatabaseManager {
                     var scoredCandidates: [(word: Word, key: Double)] = []
                     for candidate in unlearnedCandidates {
                         let w = prefs.calculateTotalWeight(
+                            level: candidate.level,
                             difficulty: candidate.difficulty,
                             topic: candidate.topic,
                             subtopic: candidate.subtopic
@@ -782,7 +792,7 @@ public class DatabaseManager {
             ("interval_days", "INTEGER DEFAULT 0"),
             ("repetition_count", "INTEGER DEFAULT 0"),
             ("next_review_date", "TEXT"),
-            ("level", "TEXT DEFAULT 'Beginner'"),
+            ("level", "TEXT DEFAULT 'toeic_basic'"),
             ("difficulty", "INTEGER DEFAULT 1"),
             ("topic", "TEXT DEFAULT ''"),
             ("subtopic", "TEXT DEFAULT ''"),
@@ -905,38 +915,74 @@ public class DatabaseManager {
         print("Successfully cleaned up -ext records and preserved all learning data.")
     }
     
-    // MARK: - CSV Import Logic
+    // MARK: - CSV Import & Migration Logic (v2)
     private func importToeicIfNeeded() {
-        var count = 0
-        let queryString = "SELECT COUNT(*) FROM words WHERE level IN ('Beginner', 'Intermediate', 'Advanced') AND word != 'abandon';"
+        let vocabVersion = UserDefaults.standard.integer(forKey: "toeic_vocabulary_version")
+        
+        var tierCount = 0
+        let queryString = "SELECT COUNT(*) FROM words WHERE level IN ('toeic_basic', 'toeic_advanced', 'toeic_gold');"
         var statement: OpaquePointer? = nil
         
         if sqlite3_prepare_v2(db, queryString, -1, &statement, nil) == SQLITE_OK {
             if sqlite3_step(statement) == SQLITE_ROW {
-                count = Int(sqlite3_column_int(statement, 0))
+                tierCount = Int(sqlite3_column_int(statement, 0))
             }
         }
         sqlite3_finalize(statement)
         
-        var metaCount = 0
-        if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM words WHERE topic != '' AND topic IS NOT NULL;", -1, &statement, nil) == SQLITE_OK {
-            if sqlite3_step(statement) == SQLITE_ROW {
-                metaCount = Int(sqlite3_column_int(statement, 0))
-            }
-        }
-        sqlite3_finalize(statement)
-        
-        // Ensure all 3,000 TOEIC words are imported and metadata is enriched
-        if count < 3000 || metaCount < 3000 {
-            print("TOEIC words incomplete (count: \(count), metaCount: \(metaCount)). Importing/enriching 3000 words...")
+        // Ensure all 3,600 TOEIC words are imported and metadata is enriched with version 2
+        if vocabVersion < 2 || tierCount < 3600 {
+            print("TOEIC vocabulary migration required (version: \(vocabVersion), 3-tier count: \(tierCount)). Importing toeic_3600.csv...")
             importToeicVocabulary()
+            migrateLegacyUserPreferences()
+            UserDefaults.standard.set(2, forKey: "toeic_vocabulary_version")
         }
     }
     
+    private func migrateLegacyUserPreferences() {
+        // 1. Migrate user_level
+        if let currentLevel = UserDefaults.standard.string(forKey: "user_level") {
+            switch currentLevel {
+            case "Beginner":
+                UserDefaults.standard.set("toeic_basic", forKey: "user_level")
+            case "Intermediate":
+                UserDefaults.standard.set("toeic_advanced", forKey: "user_level")
+            case "Advanced":
+                UserDefaults.standard.set("toeic_gold", forKey: "user_level")
+            default:
+                break
+            }
+        }
+        
+        // 2. Migrate recommended starting level in PersonalizedOnboardingPreferences
+        let recKey = "userRecommendedStartingLevel"
+        if let recLevel = UserDefaults.standard.string(forKey: recKey) {
+            switch recLevel {
+            case "Beginner":
+                UserDefaults.standard.set("toeic_basic", forKey: recKey)
+            case "Intermediate":
+                UserDefaults.standard.set("toeic_advanced", forKey: recKey)
+            case "Advanced":
+                UserDefaults.standard.set("toeic_gold", forKey: recKey)
+            default:
+                break
+            }
+        }
+        
+        // 3. Clear legacy daily words cache to avoid key mismatch on upgrade day
+        let legacyLevels = ["Beginner", "Intermediate", "Advanced", "toeic_basic", "toeic_advanced", "toeic_gold"]
+        for lvl in legacyLevels {
+            UserDefaults.standard.removeObject(forKey: "\(kTodayWordsDatePrefix)\(lvl)")
+            UserDefaults.standard.removeObject(forKey: "\(kTodayWordsIdsPrefix)\(lvl)")
+        }
+        
+        print("Successfully migrated legacy user preferences and refreshed today words cache.")
+    }
+    
     public func importToeicVocabulary() {
-        // Find toeic_3000.csv inside resources bundle
-        guard let csvURL = Bundle.main.url(forResource: "toeic_3000", withExtension: "csv") else {
-            print("Could not find toeic_3000.csv in main bundle")
+        // Find toeic_3600.csv inside resources bundle with safe fallback to toeic_3000.csv
+        guard let csvURL = Bundle.main.url(forResource: "toeic_3600", withExtension: "csv") ?? Bundle.main.url(forResource: "toeic_3000", withExtension: "csv") else {
+            print("Could not find toeic_3600.csv or toeic_3000.csv in main bundle")
             return
         }
         
@@ -944,8 +990,23 @@ public class DatabaseManager {
             let data = try String(contentsOf: csvURL, encoding: .utf8)
             let lines = data.components(separatedBy: .newlines)
             
-            // Execute in single SQLite transaction for sub-second performance
+            // Execute in single SQLite transaction for sub-second performance (< 0.2s)
             sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
+            
+            let insertStatementString = """
+            INSERT OR IGNORE INTO words (word, phonetic, translation, example, example_translation, level, difficulty, topic, subtopic, exam_tags, part_of_speech)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """
+            let updateStatementString = """
+            UPDATE words SET level = ?, difficulty = ?, topic = ?, subtopic = ?, exam_tags = ?, part_of_speech = ? WHERE word = ?;
+            """
+            
+            var insertStmt: OpaquePointer? = nil
+            var updateStmt: OpaquePointer? = nil
+            let canInsert = (sqlite3_prepare_v2(db, insertStatementString, -1, &insertStmt, nil) == SQLITE_OK)
+            let canUpdate = (sqlite3_prepare_v2(db, updateStatementString, -1, &updateStmt, nil) == SQLITE_OK)
+            
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
             
             var count = 0
             for (index, line) in lines.enumerated() {
@@ -967,35 +1028,42 @@ public class DatabaseManager {
                     let examTags = fields.count >= 11 ? fields[9] : "TOEIC"
                     let pos = fields.count >= 11 ? fields[10] : ""
                     
-                    insertWord(
-                        word: word,
-                        phonetic: phonetic,
-                        translation: translation,
-                        example: example,
-                        exampleTranslation: exampleTranslation,
-                        level: level,
-                        difficulty: difficulty,
-                        topic: topic,
-                        subtopic: subtopic,
-                        examTags: examTags,
-                        partOfSpeech: pos
-                    )
+                    if canInsert, let stmt = insertStmt {
+                        sqlite3_bind_text(stmt, 1, word, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 2, phonetic, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 3, translation, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 4, example, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 5, exampleTranslation, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 6, level, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_int(stmt, 7, Int32(difficulty))
+                        sqlite3_bind_text(stmt, 8, topic, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 9, subtopic, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 10, examTags, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 11, pos, -1, SQLITE_TRANSIENT)
+                        _ = sqlite3_step(stmt)
+                        sqlite3_reset(stmt)
+                    }
                     
-                    // In-place metadata enrichment for existing records
-                    updateWordMetadata(
-                        word: word,
-                        difficulty: difficulty,
-                        topic: topic,
-                        subtopic: subtopic,
-                        examTags: examTags,
-                        partOfSpeech: pos
-                    )
+                    if canUpdate, let stmt = updateStmt {
+                        sqlite3_bind_text(stmt, 1, level, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_int(stmt, 2, Int32(difficulty))
+                        sqlite3_bind_text(stmt, 3, topic, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 4, subtopic, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 5, examTags, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 6, pos, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(stmt, 7, word, -1, SQLITE_TRANSIENT)
+                        _ = sqlite3_step(stmt)
+                        sqlite3_reset(stmt)
+                    }
+                    
                     count += 1
                 }
             }
             
+            if let stmt = insertStmt { sqlite3_finalize(stmt) }
+            if let stmt = updateStmt { sqlite3_finalize(stmt) }
             sqlite3_exec(db, "COMMIT;", nil, nil, nil)
-            print("Successfully imported/enriched \(count) TOEIC words with metadata.")
+            print("Successfully imported/enriched \(count) TOEIC words in single batch transaction.")
         } catch {
             print("Failed to read TOEIC CSV: \(error)")
         }

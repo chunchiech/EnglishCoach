@@ -3,7 +3,7 @@ import SwiftUI
 public struct DashboardView: View {
     @State private var stats = DatabaseManager.shared.getStatistics()
     @State private var todayWords: [Word] = []
-    @State private var userLevel = UserDefaults.standard.string(forKey: "user_level") ?? "Beginner"
+    @State private var userLevel = UserDefaults.standard.string(forKey: "user_level") ?? Word.kLevelBasic
     
     public enum DashboardSheet: Identifiable {
         case learning
@@ -50,11 +50,11 @@ public struct DashboardView: View {
                 // Welcoming Header
                 headerSection
                 
-                // Difficulty Level Selector
-                Picker("難度", selection: levelBinding) {
-                    Text("初級").tag("Beginner")
-                    Text("中級").tag("Intermediate")
-                    Text("高級").tag("Advanced")
+                // Target Level Selector
+                Picker("目標路徑", selection: levelBinding) {
+                    Text("550+ 基礎").tag(Word.kLevelBasic)
+                    Text("750+ 進階").tag(Word.kLevelAdvanced)
+                    Text("860+ 金證").tag(Word.kLevelGold)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 24)
@@ -491,13 +491,21 @@ public struct DashboardView: View {
     
     private var levelBinding: Binding<String> {
         Binding<String>(
-            get: { userLevel },
+            get: {
+                switch userLevel {
+                case "Beginner": return Word.kLevelBasic
+                case "Intermediate": return Word.kLevelAdvanced
+                case "Advanced": return Word.kLevelGold
+                default: return userLevel
+                }
+            },
             set: { newLevel in
-                if !premiumManager.isPremium && (newLevel == "Intermediate" || newLevel == "Advanced") {
+                let target = (newLevel == "Intermediate" ? Word.kLevelAdvanced : (newLevel == "Advanced" ? Word.kLevelGold : newLevel))
+                if !premiumManager.isPremium && (target == Word.kLevelAdvanced || target == Word.kLevelGold) {
                     activeSheet = .paywall
                 } else {
-                    userLevel = newLevel
-                    UserDefaults.standard.set(newLevel, forKey: "user_level")
+                    userLevel = target
+                    UserDefaults.standard.set(target, forKey: "user_level")
                     refreshData()
                 }
             }

@@ -148,7 +148,7 @@ public struct PlacementTestView: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text("建議起始難度")
+                            Text("建議目標路徑")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.secondary)
                             Text(preferences.localizedLevelName(preferences.recommendedLevel))
@@ -164,7 +164,7 @@ public struct PlacementTestView: View {
                         HStack {
                             Text("🎯 您的學習目標：")
                                 .font(.system(size: 14, weight: .semibold))
-                            Text(preferences.targetScore)
+                            Text(preferences.targetGoalTitle(for: preferences.targetScore))
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundColor(.purple)
                         }

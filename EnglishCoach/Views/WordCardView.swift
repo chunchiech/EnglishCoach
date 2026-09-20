@@ -86,7 +86,7 @@ public struct WordCardView: View {
                 }
                 
                 if !word.partOfSpeech.isEmpty || !word.level.isEmpty {
-                    Text(!word.partOfSpeech.isEmpty ? "\(word.partOfSpeech) · \(word.level)" : word.level)
+                    Text(!word.partOfSpeech.isEmpty ? "\(word.partOfSpeech) · \(word.displayLevelName)" : word.displayLevelName)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 12)

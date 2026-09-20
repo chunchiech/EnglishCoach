@@ -32,16 +32,33 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
         LearningScenario(id: "office", title: "🏢 辦公行政", subtitle: "日常營運、文件管理、跨部門協調", icon: "building.2.fill")
     ]
     
-    public static let availableTargetScores = [
-        "400+": "基礎起步 · 掌握日常商務基礎單字",
-        "600+": "職場門檻 · 多數企業基本英文門檻",
-        "730+": "商務實用 · 能以英語進行日常業務溝通",
-        "785+": "外商常態 · 跨國會議與流暢工作能力",
-        "860+": "商務流利 · 精準掌握各領域商務英語",
-        "900+": "專家精通 · 母語等級高階專業商務詞彙"
+    public struct TargetGoal: Identifiable, Hashable {
+        public let id: String
+        public let level: String
+        public let title: String
+        public let subtitle: String
+        
+        public init(id: String, level: String, title: String, subtitle: String) {
+            self.id = id
+            self.level = level
+            self.title = title
+            self.subtitle = subtitle
+        }
+    }
+    
+    public static let targetGoals: [TargetGoal] = [
+        TargetGoal(id: "550+", level: Word.kLevelBasic, title: "🎯 550+ 基礎", subtitle: "打底必備 · 掌握日常商務基礎單字與基本溝通"),
+        TargetGoal(id: "750+", level: Word.kLevelAdvanced, title: "🎯 750+ 進階", subtitle: "商務實用 · 跨國職場溝通、會議談判與商務書信"),
+        TargetGoal(id: "860+", level: Word.kLevelGold, title: "🏆 860+ 金證", subtitle: "頂尖金色證書 · 外商高管必備，精通全方位商業策略與專業術語")
     ]
     
-    public static let targetScoreOrder = ["400+", "600+", "730+", "785+", "860+", "900+"]
+    public static let availableTargetScores = [
+        "550+": "打底必備 · 掌握日常商務基礎單字與基本溝通",
+        "750+": "商務實用 · 跨國職場溝通、會議談判與商務書信",
+        "860+": "頂尖金色證書 · 外商高管必備，精通全方位商業策略與專業術語"
+    ]
+    
+    public static let targetScoreOrder = ["550+", "750+", "860+"]
     
     @Published public var selectedScenarioIds: [String] {
         didSet {
@@ -73,8 +90,23 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
     
     public init() {
         self.selectedScenarioIds = UserDefaults.standard.stringArray(forKey: Self.selectedScenariosKey) ?? ["business", "meetings"]
-        self.targetScore = UserDefaults.standard.string(forKey: Self.targetScoreKey) ?? "730+"
-        self.recommendedLevel = UserDefaults.standard.string(forKey: Self.recommendedLevelKey) ?? "Intermediate"
+        let rawScore = UserDefaults.standard.string(forKey: Self.targetScoreKey) ?? "550+"
+        if rawScore == "400+" || rawScore == "600+" {
+            self.targetScore = "550+"
+        } else if rawScore == "730+" || rawScore == "785+" {
+            self.targetScore = "750+"
+        } else if rawScore == "900+" {
+            self.targetScore = "860+"
+        } else {
+            self.targetScore = rawScore
+        }
+        let rawLvl = UserDefaults.standard.string(forKey: Self.recommendedLevelKey) ?? Word.kLevelBasic
+        switch rawLvl {
+        case "Beginner": self.recommendedLevel = Word.kLevelBasic
+        case "Intermediate": self.recommendedLevel = Word.kLevelAdvanced
+        case "Advanced": self.recommendedLevel = Word.kLevelGold
+        default: self.recommendedLevel = rawLvl
+        }
         self.placementScore = UserDefaults.standard.integer(forKey: Self.placementScoreKey)
     }
     
@@ -83,8 +115,9 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
             self.placementScore = s
         }
         if let lvl = recommendedLevel {
-            self.recommendedLevel = lvl
-            UserDefaults.standard.set(lvl, forKey: "user_level")
+            let normalized = (lvl == "Beginner" ? Word.kLevelBasic : (lvl == "Intermediate" ? Word.kLevelAdvanced : (lvl == "Advanced" ? Word.kLevelGold : lvl)))
+            self.recommendedLevel = normalized
+            UserDefaults.standard.set(normalized, forKey: "user_level")
         }
         UserDefaults.standard.set(true, forKey: Self.onboardingCompletedKey)
     }
@@ -102,21 +135,28 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
     
     public func calculateRecommendedLevel(correctCount: Int) -> String {
         if correctCount >= 16 {
-            return "Advanced"
+            return Word.kLevelGold
         } else if correctCount >= 10 {
-            return "Intermediate"
+            return Word.kLevelAdvanced
         } else {
-            return "Beginner"
+            return Word.kLevelBasic
         }
     }
     
     public func localizedLevelName(_ level: String) -> String {
         switch level {
-        case "Beginner": return "初級 (Beginner)"
-        case "Intermediate": return "中級 (Intermediate)"
-        case "Advanced": return "進階 (Advanced)"
+        case "Beginner", Word.kLevelBasic: return "550+ 基礎"
+        case "Intermediate", Word.kLevelAdvanced: return "750+ 進階"
+        case "Advanced", Word.kLevelGold: return "860+ 金證"
         default: return level
         }
+    }
+    
+    public func targetGoalTitle(for score: String) -> String {
+        if let g = Self.targetGoals.first(where: { $0.id == score }) {
+            return g.title
+        }
+        return score
     }
     
     public static func matchesScenario(scenarioId: String, topic: String, subtopic: String) -> Bool {
@@ -179,60 +219,90 @@ public class PersonalizedOnboardingPreferences: ObservableObject {
         return 1.0
     }
     
-    public func getLevelWeightMultiplier(difficulty: Int) -> Double {
-        let currentLevel = recommendedLevel.isEmpty ? (UserDefaults.standard.string(forKey: "user_level") ?? "Beginner") : recommendedLevel
+    public func getPathWeightMultiplier(level: String) -> Double {
+        let currentLevel = UserDefaults.standard.string(forKey: "user_level") ?? (recommendedLevel.isEmpty ? Word.kLevelBasic : recommendedLevel)
+        let userTier: String
         switch currentLevel {
-        case "Beginner":
-            if difficulty <= 2 {
-                return 2.0 // 完全符合程度
-            } else if difficulty == 3 {
-                return 1.0 // 相鄰程度
-            } else if difficulty == 4 {
-                return 0.6 // 較難但可接受
-            } else {
-                return 0.35 // 明顯過難
+        case "Beginner", Word.kLevelBasic: userTier = Word.kLevelBasic
+        case "Intermediate", Word.kLevelAdvanced: userTier = Word.kLevelAdvanced
+        case "Advanced", Word.kLevelGold: userTier = Word.kLevelGold
+        default: userTier = Word.kLevelBasic
+        }
+        
+        let wordTier: String
+        switch level {
+        case "Beginner", Word.kLevelBasic: wordTier = Word.kLevelBasic
+        case "Intermediate", Word.kLevelAdvanced: wordTier = Word.kLevelAdvanced
+        case "Advanced", Word.kLevelGold: wordTier = Word.kLevelGold
+        default: wordTier = Word.kLevelBasic
+        }
+        
+        // Target path gets 3.0x
+        if userTier == wordTier {
+            return 3.0
+        }
+        
+        // Adjacent gets 1.0x, Non-target distant gets 0.2x
+        if userTier == Word.kLevelBasic {
+            return wordTier == Word.kLevelAdvanced ? 1.0 : 0.2
+        } else if userTier == Word.kLevelAdvanced {
+            return 1.0 // Both Basic and Gold are adjacent to Advanced
+        } else { // Word.kLevelGold
+            return wordTier == Word.kLevelAdvanced ? 1.0 : 0.2
+        }
+    }
+    
+    public func getDifficultyWeightMultiplier(difficulty: Int) -> Double {
+        let currentLevel = UserDefaults.standard.string(forKey: "user_level") ?? (recommendedLevel.isEmpty ? Word.kLevelBasic : recommendedLevel)
+        let userTier: String
+        switch currentLevel {
+        case "Beginner", Word.kLevelBasic: userTier = Word.kLevelBasic
+        case "Intermediate", Word.kLevelAdvanced: userTier = Word.kLevelAdvanced
+        case "Advanced", Word.kLevelGold: userTier = Word.kLevelGold
+        default: userTier = Word.kLevelBasic
+        }
+        
+        switch userTier {
+        case Word.kLevelBasic:
+            // 550+ 聚焦 Lv.1~3
+            switch difficulty {
+            case 1: return 1.6
+            case 2: return 1.4
+            case 3: return 1.1
+            case 4: return 0.5
+            default: return 0.2
             }
-        case "Intermediate":
-            if difficulty == 3 {
-                return 2.0 // 完全符合程度
-            } else if difficulty == 2 || difficulty == 4 {
-                return 1.0 // 相鄰程度
-            } else if difficulty == 5 {
-                return 0.6 // 較難但可接受
-            } else {
-                return 0.35 // 明顯過難/差距過大
+        case Word.kLevelAdvanced:
+            // 750+ 均衡涵蓋 Lv.2~4
+            switch difficulty {
+            case 1: return 0.7
+            case 2: return 1.2
+            case 3: return 1.5
+            case 4: return 1.3
+            default: return 0.7
             }
-        case "Advanced":
-            if difficulty >= 4 {
-                return 2.0 // 完全符合程度
-            } else if difficulty == 3 {
-                return 1.0 // 相鄰程度
-            } else if difficulty == 2 {
-                return 0.6 // 較難但可接受
-            } else {
-                return 0.35 // 明顯過難/差距過大
+        case Word.kLevelGold:
+            // 860+ 密集涵蓋 Lv.4~5
+            switch difficulty {
+            case 1: return 0.2
+            case 2: return 0.4
+            case 3: return 0.9
+            case 4: return 1.8
+            default: return 2.2
             }
         default:
             return 1.0
         }
     }
     
-    public func getTargetScoreWeightMultiplier(difficulty: Int) -> Double {
-        let score = targetScore
-        if score.contains("400") || score.contains("600") {
-            return (difficulty <= 2) ? 1.4 : 1.0
-        } else if score.contains("730") || score.contains("785") {
-            return (difficulty == 3 || difficulty == 4) ? 1.4 : 1.0
-        } else if score.contains("860") || score.contains("900") {
-            return (difficulty >= 4) ? 1.4 : 1.0
-        }
-        return 1.0
+    public func calculateTotalWeight(level: String, difficulty: Int, topic: String, subtopic: String) -> Double {
+        let wScenario = getScenarioWeightMultiplier(topic: topic, subtopic: subtopic)
+        let wPath = getPathWeightMultiplier(level: level)
+        let wDiff = getDifficultyWeightMultiplier(difficulty: difficulty)
+        return max(0.01, wScenario * wPath * wDiff)
     }
     
     public func calculateTotalWeight(difficulty: Int, topic: String, subtopic: String) -> Double {
-        let wScenario = getScenarioWeightMultiplier(topic: topic, subtopic: subtopic)
-        let wLevel = getLevelWeightMultiplier(difficulty: difficulty)
-        let wTarget = getTargetScoreWeightMultiplier(difficulty: difficulty)
-        return max(0.01, 1.0 * wScenario * wLevel * wTarget)
+        return calculateTotalWeight(level: Word.kLevelBasic, difficulty: difficulty, topic: topic, subtopic: subtopic)
     }
 }

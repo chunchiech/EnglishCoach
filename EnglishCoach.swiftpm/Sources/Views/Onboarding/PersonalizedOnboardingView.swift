@@ -176,32 +176,37 @@ public struct PersonalizedOnboardingView: View {
             .padding(.horizontal, 24)
             
             ScrollView {
-                VStack(spacing: 10) {
-                    ForEach(PersonalizedOnboardingPreferences.targetScoreOrder, id: \.self) { score in
-                        let isSelected = preferences.targetScore == score
-                        let desc = PersonalizedOnboardingPreferences.availableTargetScores[score] ?? ""
+                VStack(spacing: 12) {
+                    ForEach(PersonalizedOnboardingPreferences.targetGoals) { goal in
+                        let isSelected = preferences.targetScore == goal.id
                         
                         Button(action: {
-                            preferences.targetScore = score
+                            preferences.targetScore = goal.id
+                            preferences.recommendedLevel = goal.level
                         }) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(score)
-                                        .font(.system(size: 19, weight: .bold, design: .rounded))
-                                        .foregroundColor(isSelected ? .purple : .primary)
+                            HStack(spacing: 16) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text(goal.title)
+                                            .font(.system(size: 19, weight: .bold, design: .rounded))
+                                            .foregroundColor(isSelected ? .purple : .primary)
+                                        
+                                        Spacer()
+                                        
+                                        if isSelected {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(.purple)
+                                                .font(.system(size: 20))
+                                        }
+                                    }
                                     
-                                    Text(desc)
+                                    Text(goal.subtitle)
                                         .font(.system(size: 13))
                                         .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                if isSelected {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.purple)
-                                        .font(.system(size: 20))
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
-                            .padding(16)
+                            .padding(18)
                             .background(Color(.secondarySystemGroupedBackground))
                             .cornerRadius(16)
                             .overlay(
@@ -277,7 +282,7 @@ public struct PersonalizedOnboardingView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text("測驗包含初級、中級、進階三階題型")
+                    Text("測驗包含 550+ 基礎、750+ 進階、860+ 金證三階題型")
                         .font(.system(size: 14))
                 }
                 HStack(spacing: 12) {
@@ -316,7 +321,7 @@ public struct PersonalizedOnboardingView: View {
                 
                 Button(action: {
                     // Skip and complete with defaults
-                    preferences.completeOnboarding(recommendedLevel: "Intermediate")
+                    preferences.completeOnboarding(recommendedLevel: Word.kLevelBasic)
                     onComplete()
                     dismiss()
                 }) {

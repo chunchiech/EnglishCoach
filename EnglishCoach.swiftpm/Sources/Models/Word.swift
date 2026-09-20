@@ -18,8 +18,31 @@ public struct Word: Identifiable, Codable, Hashable {
     public var repetitionCount: Int
     public var nextReviewDate: String?
     
-    // Difficulty Level
-    public var level: String // "Beginner", "Intermediate", "Advanced"
+    // TOEIC 3-Tier Target Level
+    public static let kLevelBasic = "toeic_basic"
+    public static let kLevelAdvanced = "toeic_advanced"
+    public static let kLevelGold = "toeic_gold"
+    
+    // Target Level ("toeic_basic", "toeic_advanced", "toeic_gold", backwards-compatible with legacy levels)
+    public var level: String
+    
+    public var normalizedLevel: String {
+        switch level {
+        case "Beginner": return Self.kLevelBasic
+        case "Intermediate": return Self.kLevelAdvanced
+        case "Advanced": return Self.kLevelGold
+        default: return level
+        }
+    }
+    
+    public var displayLevelName: String {
+        switch normalizedLevel {
+        case Self.kLevelBasic: return "550+ 基礎"
+        case Self.kLevelAdvanced: return "750+ 進階"
+        case Self.kLevelGold: return "860+ 金證"
+        default: return level
+        }
+    }
     
     // Metadata fields
     public var difficulty: Int // 1 to 5
@@ -43,7 +66,7 @@ public struct Word: Identifiable, Codable, Hashable {
         intervalDays: Int = 0,
         repetitionCount: Int = 0,
         nextReviewDate: String? = nil,
-        level: String = "Beginner",
+        level: String = "toeic_basic",
         difficulty: Int = 1,
         topic: String = "",
         subtopic: String = "",

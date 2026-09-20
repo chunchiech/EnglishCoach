@@ -12,8 +12,8 @@ let package = Package(
             name: "EnglishCoach",
             targets: ["App"],
             bundleIdentifier: "com.andy.EnglishCoach",
-            displayVersion: "1.0.2",
-            bundleVersion: "3",
+            displayVersion: "1.1.0",
+            bundleVersion: "1",
             appIcon: .asset("AppIcon"),
             accentColor: .presetColor(.purple),
             supportedDeviceFamilies: [
