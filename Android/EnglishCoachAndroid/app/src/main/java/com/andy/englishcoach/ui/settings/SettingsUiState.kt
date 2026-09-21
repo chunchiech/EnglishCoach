@@ -1,5 +1,6 @@
 package com.andy.englishcoach.ui.settings
 
+import com.andy.englishcoach.billing.DailyTargetPolicy
 import com.andy.englishcoach.data.model.ToeicTarget
 import com.andy.englishcoach.data.preference.SharedPreferencesDailyLearningPreferences
 import com.andy.englishcoach.data.preference.SharedPreferencesSettingsPreferences
@@ -18,5 +19,9 @@ data class SettingsUiState(
     val remainingFreeQuestions: Int = SharedPreferencesDailyLearningPreferences.DEFAULT_MAX_FREE_DAILY_QUESTIONS,
     val versionName: String = "1.0",
     val availableEmojis: List<String> = SharedPreferencesSettingsPreferences.AVAILABLE_AVATAR_EMOJIS,
-    val showEditProfileSheet: Boolean = false
+    val showEditProfileSheet: Boolean = false,
+    val isPremium: Boolean = false,
+    val dailyTargetPolicy: DailyTargetPolicy = DailyTargetPolicy.Free,
+    val availableDailyTargets: List<Int> = listOf(5, 10, 20, 30, 50, 100, DailyTargetPolicy.UNLIMITED_TARGET),
+    val showDailyTargetSheet: Boolean = false
 )

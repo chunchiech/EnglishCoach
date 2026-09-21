@@ -3,6 +3,8 @@ package com.andy.englishcoach.ui.learning
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.andy.englishcoach.billing.DefaultBillingRepository
+import com.andy.englishcoach.billing.PremiumEntitlementProvider
 import com.andy.englishcoach.data.model.DailyLearningUiState
 import com.andy.englishcoach.data.model.ToeicTarget
 import com.andy.englishcoach.data.preference.SettingsPreferences
@@ -23,7 +25,8 @@ import kotlinx.coroutines.withContext
 class DailyLearningViewModel(
     private val repository: DailyLearningRepository,
     private val ttsManager: TtsManager? = null,
-    private val settingsPreferences: SettingsPreferences? = null
+    private val settingsPreferences: SettingsPreferences? = null,
+    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DailyLearningUiState())
@@ -50,7 +53,8 @@ class DailyLearningViewModel(
                     isCardFlipped = false,
                     isLoading = false,
                     isCompleted = false,
-                    isTierCompleted = isTierCompleted
+                    isTierCompleted = isTierCompleted,
+                    isPremium = entitlementProvider.isPremium
                 )
             }
 

@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.andy.englishcoach.billing.DailyTargetPolicy
 import com.andy.englishcoach.ui.theme.EnglishCoachColors
 import com.andy.englishcoach.ui.theme.EnglishCoachIcons
 import com.andy.englishcoach.ui.theme.EnglishCoachShapes
@@ -74,6 +75,7 @@ import com.andy.englishcoach.ui.theme.EnglishCoachTypography
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onNavigateBack: () -> Unit,
+    onOpenPaywall: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -130,6 +132,32 @@ fun SettingsScreen(
                 )
             }
 
+            // Section 1.5: 會員方案 (Membership Plan)
+            SettingsSectionHeader(title = "會員方案")
+            Card(
+                shape = EnglishCoachShapes.card,
+                colors = CardDefaults.cardColors(containerColor = EnglishCoachColors.Surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, EnglishCoachColors.CardBorder),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                if (state.isPremium) {
+                    SettingsInfoRow(
+                        icon = EnglishCoachIcons.Star,
+                        iconTint = EnglishCoachColors.Orange,
+                        title = "會員狀態",
+                        value = "Premium 會員",
+                        valueColor = EnglishCoachColors.Purple
+                    )
+                } else {
+                    SettingsActionRow(
+                        icon = EnglishCoachIcons.Star,
+                        iconTint = EnglishCoachColors.Orange,
+                        title = "升級至 Premium 會員",
+                        onClick = onOpenPaywall
+                    )
+                }
+            }
+
             // Section 2: 學習 (Learning)
             SettingsSectionHeader(title = "學習")
             Card(
@@ -150,24 +178,29 @@ fun SettingsScreen(
                         icon = EnglishCoachIcons.Quiz,
                         iconTint = EnglishCoachColors.Purple,
                         title = "每日學習目標",
-                        value = "固定 ${state.dailyTarget} 題"
+                        value = if (state.dailyTarget == DailyTargetPolicy.UNLIMITED_TARGET) "無限制" else "${state.dailyTarget} 題 / 天",
+                        onClick = { viewModel.setDailyTargetSheetVisible(true) }
                     )
                     HorizontalDivider(color = EnglishCoachColors.CardBorder.copy(alpha = 0.5f))
                     SettingsInfoRow(
                         title = "今日完成進度",
-                        value = "${state.todayCompletedCount} / ${state.dailyTarget} 題",
-                        valueColor = if (state.todayCompletedCount >= state.dailyTarget) EnglishCoachColors.Orange else EnglishCoachColors.TextPrimary
+                        value = "${state.todayCompletedCount} / ${if (state.dailyTarget == DailyTargetPolicy.UNLIMITED_TARGET) "∞" else state.dailyTarget.toString()} 題",
+                        valueColor = if (state.dailyTarget != DailyTargetPolicy.UNLIMITED_TARGET && state.todayCompletedCount >= state.dailyTarget) EnglishCoachColors.Orange else EnglishCoachColors.TextPrimary
                     )
                     HorizontalDivider(color = EnglishCoachColors.CardBorder.copy(alpha = 0.5f))
                     SettingsInfoRow(
                         title = "剩餘免費額度",
-                        value = "${state.remainingFreeQuestions} 題",
+                        value = if (state.isPremium) "無限制" else "${state.remainingFreeQuestions} 題",
                         valueColor = EnglishCoachColors.TextSecondary
                     )
                 }
             }
             Text(
-                text = "自訂學習情境將於下一次新單字選題時生效。免費版每日固定享有 10 題練習。",
+                text = if (state.isPremium) {
+                    "自訂學習情境將於下一次新單字選題時生效。目前為 Premium 會員，已解鎖自訂每日目標與無限制複習測驗。"
+                } else {
+                    "自訂學習情境將於下一次新單字選題時生效。免費版每日固定享有 10 題練習，升級 Premium 可解鎖自訂目標與無限制複習測驗。"
+                },
                 style = EnglishCoachTypography.caption,
                 color = EnglishCoachColors.TextSecondary,
                 modifier = Modifier.padding(horizontal = EnglishCoachSpacing.sm, vertical = EnglishCoachSpacing.xxs)
@@ -298,6 +331,23 @@ fun SettingsScreen(
                 }
             )
         }
+
+        if (state.showDailyTargetSheet) {
+            DailyTargetBottomSheet(
+                currentTarget = state.dailyTarget,
+                isPremium = state.isPremium,
+                availableTargets = state.availableDailyTargets,
+                onDismiss = { viewModel.setDailyTargetSheetVisible(false) },
+                onSelectTarget = { target ->
+                    viewModel.selectDailyTarget(target)
+                    viewModel.setDailyTargetSheetVisible(false)
+                },
+                onOpenPaywall = {
+                    viewModel.setDailyTargetSheetVisible(false)
+                    onOpenPaywall()
+                }
+            )
+        }
     }
 }
 
@@ -370,18 +420,22 @@ private fun SettingsInfoRow(
     value: String,
     icon: ImageVector? = null,
     iconTint: Color = EnglishCoachColors.Purple,
-    valueColor: Color = EnglishCoachColors.TextSecondary
+    valueColor: Color = EnglishCoachColors.TextSecondary,
+    onClick: (() -> Unit)? = null
 ) {
+    val clickableModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(clickableModifier)
             .padding(horizontal = EnglishCoachSpacing.cardPadding, vertical = EnglishCoachSpacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.sm)
+            horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.sm),
+            modifier = Modifier.weight(1f, fill = false)
         ) {
             if (icon != null) {
                 Icon(
@@ -398,11 +452,24 @@ private fun SettingsInfoRow(
             )
         }
 
-        Text(
-            text = value,
-            style = EnglishCoachTypography.secondary.copy(fontWeight = FontWeight.Medium),
-            color = valueColor
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xs)
+        ) {
+            Text(
+                text = value,
+                style = EnglishCoachTypography.secondary.copy(fontWeight = FontWeight.Medium),
+                color = valueColor
+            )
+            if (onClick != null) {
+                Icon(
+                    imageVector = EnglishCoachIcons.ChevronRight,
+                    contentDescription = null,
+                    tint = EnglishCoachColors.TextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 
@@ -657,6 +724,129 @@ private fun ProfileEditBottomSheet(
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DailyTargetBottomSheet(
+    currentTarget: Int,
+    isPremium: Boolean,
+    availableTargets: List<Int>,
+    onDismiss: () -> Unit,
+    onSelectTarget: (Int) -> Unit,
+    onOpenPaywall: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = EnglishCoachColors.Surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = EnglishCoachSpacing.screenHorizontal)
+                .padding(bottom = EnglishCoachSpacing.xxxl),
+            verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.md)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "每日學習目標",
+                    style = EnglishCoachTypography.sectionTitle,
+                    color = EnglishCoachColors.TextPrimary
+                )
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        text = "關閉",
+                        color = EnglishCoachColors.Purple,
+                        style = EnglishCoachTypography.bodyLarge
+                    )
+                }
+            }
+
+            Text(
+                text = if (isPremium) "選擇每天練習的新單字數量" else "免費版固定每日 10 題，升級 Premium 解鎖自由調整",
+                style = EnglishCoachTypography.caption,
+                color = EnglishCoachColors.TextSecondary
+            )
+
+            HorizontalDivider(color = EnglishCoachColors.CardBorder)
+
+            availableTargets.forEach { target ->
+                val isSelected = currentTarget == target
+                val isUnlocked = isPremium || target == 10
+                val label = when (target) {
+                    DailyTargetPolicy.UNLIMITED_TARGET -> "無限制 (自選練習)"
+                    10 -> "10 題 / 天 (標準推薦)"
+                    else -> "$target 題 / 天"
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(EnglishCoachShapes.card)
+                        .clickable {
+                            if (isUnlocked) {
+                                onSelectTarget(target)
+                            } else {
+                                onOpenPaywall()
+                            }
+                        }
+                        .padding(horizontal = EnglishCoachSpacing.cardPadding, vertical = EnglishCoachSpacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.sm)
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = EnglishCoachIcons.CheckCircle,
+                                contentDescription = "已選擇",
+                                tint = EnglishCoachColors.Purple,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .border(1.5.dp, EnglishCoachColors.CardBorder, CircleShape)
+                            )
+                        }
+
+                        Text(
+                            text = label,
+                            style = EnglishCoachTypography.bodyLarge.copy(
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            ),
+                            color = if (isUnlocked) EnglishCoachColors.TextPrimary else EnglishCoachColors.TextSecondary
+                        )
+                    }
+
+                    if (!isUnlocked) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(EnglishCoachColors.Orange.copy(alpha = 0.12f))
+                                .padding(horizontal = EnglishCoachSpacing.xs, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "PRO",
+                                style = EnglishCoachTypography.badge,
+                                color = EnglishCoachColors.Orange
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

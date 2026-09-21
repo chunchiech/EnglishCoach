@@ -5,11 +5,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
+import com.andy.englishcoach.billing.GooglePlayBillingRepository
 import com.andy.englishcoach.data.database.EnglishCoachDatabase
 import com.andy.englishcoach.data.database.VocabularyDatabaseInitializer
 import com.andy.englishcoach.data.preference.SharedPreferencesDailyLearningPreferences
@@ -21,6 +23,7 @@ import com.andy.englishcoach.ui.dashboard.DashboardScreen
 import com.andy.englishcoach.ui.dashboard.DashboardViewModel
 import com.andy.englishcoach.ui.learning.DailyLearningScreen
 import com.andy.englishcoach.ui.learning.DailyLearningViewModel
+import com.andy.englishcoach.ui.paywall.PaywallBottomSheet
 import com.andy.englishcoach.ui.quiz.QuizScreen
 import com.andy.englishcoach.ui.quiz.QuizViewModel
 import com.andy.englishcoach.ui.review.ReviewCenterScreen
@@ -40,6 +43,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     private var ttsManager: TtsManager? = null
+    private var billingRepository: GooglePlayBillingRepository? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +52,12 @@ class MainActivity : ComponentActivity() {
         val database = EnglishCoachDatabase.getInstance(applicationContext)
         val preferences = SharedPreferencesDailyLearningPreferences.create(applicationContext)
         val settingsPreferences = SharedPreferencesSettingsPreferences.create(applicationContext)
+        val billing = GooglePlayBillingRepository(
+            context = applicationContext,
+            activityProvider = { this@MainActivity }
+        )
+        billing.currentActivity = this
+        billingRepository = billing
         ttsManager = TtsManager(applicationContext)
         val learningRepository = DailyLearningRepository(database, preferences)
         val quizRepository = QuizRepository(database, preferences, learningRepository)
@@ -65,16 +75,27 @@ class MainActivity : ComponentActivity() {
             quizRepository = quizRepository,
             reviewRepository = reviewRepository,
             preferences = preferences,
-            database = database
+            database = database,
+            entitlementProvider = billing
         )
         val settingsViewModel = SettingsViewModel(
             settingsPreferences = settingsPreferences,
             learningPreferences = preferences,
-            versionName = versionName
+            versionName = versionName,
+            entitlementProvider = billing
         )
-        val learningViewModel = DailyLearningViewModel(learningRepository, ttsManager, settingsPreferences)
+        val learningViewModel = DailyLearningViewModel(
+            repository = learningRepository,
+            ttsManager = ttsManager,
+            settingsPreferences = settingsPreferences,
+            entitlementProvider = billing
+        )
         val quizViewModel = QuizViewModel(quizRepository, ttsManager)
-        val reviewViewModel = ReviewViewModel(reviewRepository, ttsManager)
+        val reviewViewModel = ReviewViewModel(
+            reviewRepository = reviewRepository,
+            ttsManager = ttsManager,
+            entitlementProvider = billing
+        )
 
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
@@ -85,7 +106,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EnglishCoachAndroidTheme {
+                val catalogState by billing.catalogState.collectAsState()
                 var currentScreen by remember { mutableStateOf("dashboard") }
+                var showPaywall by remember { mutableStateOf(false) }
+                var paywallStatusMessage by remember { mutableStateOf<String?>(null) }
 
                 // System back gesture: return to Dashboard from child screens
                 BackHandler(enabled = currentScreen != "dashboard") {
@@ -112,6 +136,9 @@ class MainActivity : ComponentActivity() {
                             onNavigateToSettings = {
                                 settingsViewModel.refresh()
                                 currentScreen = "settings"
+                            },
+                            onNavigateToPaywall = {
+                                showPaywall = true
                             }
                         )
                     }
@@ -151,6 +178,9 @@ class MainActivity : ComponentActivity() {
                             onNavigateBack = {
                                 currentScreen = "dashboard"
                                 dashboardViewModel.refresh()
+                            },
+                            onOpenPaywall = {
+                                showPaywall = true
                             }
                         )
                     }
@@ -160,9 +190,69 @@ class MainActivity : ComponentActivity() {
                             onNavigateBack = {
                                 currentScreen = "dashboard"
                                 dashboardViewModel.refresh()
+                            },
+                            onOpenPaywall = {
+                                showPaywall = true
                             }
                         )
                     }
+                }
+
+                if (showPaywall) {
+                    PaywallBottomSheet(
+                        onDismissRequest = {
+                            showPaywall = false
+                            paywallStatusMessage = null
+                        },
+                        onPurchaseProduct = { product ->
+                            lifecycleScope.launch {
+                                val result = billing.purchase(this@MainActivity, product)
+                                when (result) {
+                                    is com.andy.englishcoach.billing.BillingResult.Success -> {
+                                        showPaywall = false
+                                        paywallStatusMessage = null
+                                        dashboardViewModel.refresh()
+                                        settingsViewModel.refresh()
+                                        reviewViewModel.loadReviewWords()
+                                    }
+                                    is com.andy.englishcoach.billing.BillingResult.Pending -> {
+                                        paywallStatusMessage = result.message
+                                    }
+                                    is com.andy.englishcoach.billing.BillingResult.Cancelled -> {
+                                        paywallStatusMessage = result.message
+                                    }
+                                    is com.andy.englishcoach.billing.BillingResult.Error -> {
+                                        paywallStatusMessage = result.message
+                                    }
+                                }
+                            }
+                        },
+                        onRestorePurchases = {
+                            lifecycleScope.launch {
+                                val result = billing.restorePurchases()
+                                when (result) {
+                                    is com.andy.englishcoach.billing.BillingResult.Success -> {
+                                        showPaywall = false
+                                        paywallStatusMessage = null
+                                        dashboardViewModel.refresh()
+                                        settingsViewModel.refresh()
+                                        reviewViewModel.loadReviewWords()
+                                    }
+                                    is com.andy.englishcoach.billing.BillingResult.Pending -> {
+                                        paywallStatusMessage = result.message
+                                    }
+                                    is com.andy.englishcoach.billing.BillingResult.Cancelled -> {
+                                        paywallStatusMessage = result.message
+                                    }
+                                    is com.andy.englishcoach.billing.BillingResult.Error -> {
+                                        paywallStatusMessage = result.message
+                                    }
+                                }
+                            }
+                        },
+                        statusMessage = paywallStatusMessage,
+                        catalog = catalogState
+                    )
                 }
             }
         }
@@ -172,5 +262,8 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         ttsManager?.shutdown()
         ttsManager = null
+        billingRepository?.currentActivity = null
+        billingRepository?.destroy()
+        billingRepository = null
     }
 }

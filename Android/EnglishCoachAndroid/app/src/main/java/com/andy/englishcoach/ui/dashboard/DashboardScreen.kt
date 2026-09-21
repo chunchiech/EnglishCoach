@@ -57,6 +57,7 @@ fun DashboardScreen(
     onStartQuiz: () -> Unit,
     onNavigateToReview: () -> Unit,
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToPaywall: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -116,7 +117,9 @@ fun DashboardScreen(
             // 5. Action Section: Smart Review Center & Premium
             ActionSection(
                 reviewCount = state.reviewCount,
-                onReviewCenterClicked = onNavigateToReview
+                isPremium = state.isPremium,
+                onReviewCenterClicked = onNavigateToReview,
+                onPremiumClicked = onNavigateToPaywall
             )
         }
     }
@@ -462,7 +465,9 @@ private fun StatBox(
 @Composable
 private fun ActionSection(
     reviewCount: Int,
+    isPremium: Boolean = false,
     onReviewCenterClicked: () -> Unit,
+    onPremiumClicked: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -490,7 +495,7 @@ private fun ActionSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.lg)
             ) {
-                val iconColor = if (reviewCount > 0) EnglishCoachColors.Orange else EnglishCoachColors.Green
+                val iconColor = EnglishCoachColors.Orange
                 Box(
                     modifier = Modifier
                         .size(44.dp)
@@ -549,12 +554,20 @@ private fun ActionSection(
             }
         }
 
-        // Premium Promotional Area (Visual Preview - No fake billing or purchasing)
+        // Premium Promotional Area
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !isPremium, role = Role.Button) {
+                    onPremiumClicked()
+                },
             shape = EnglishCoachShapes.secondaryCard,
             colors = CardDefaults.cardColors(containerColor = EnglishCoachColors.Surface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, EnglishCoachColors.Purple.copy(alpha = 0.2f)),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                if (isPremium) EnglishCoachColors.Green.copy(alpha = 0.3f)
+                else EnglishCoachColors.Purple.copy(alpha = 0.2f)
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Row(
@@ -562,7 +575,10 @@ private fun ActionSection(
                     .fillMaxWidth()
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(
+                            colors = if (isPremium) listOf(
+                                EnglishCoachColors.Green.copy(alpha = 0.08f),
+                                EnglishCoachColors.Blue.copy(alpha = 0.05f)
+                            ) else listOf(
                                 EnglishCoachColors.Purple.copy(alpha = 0.08f),
                                 EnglishCoachColors.Blue.copy(alpha = 0.05f)
                             )
@@ -576,13 +592,16 @@ private fun ActionSection(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(EnglishCoachColors.Orange.copy(alpha = 0.15f)),
+                        .background(
+                            if (isPremium) EnglishCoachColors.Green.copy(alpha = 0.15f)
+                            else EnglishCoachColors.Orange.copy(alpha = 0.15f)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = EnglishCoachIcons.Crown,
+                        imageVector = if (isPremium) EnglishCoachIcons.CheckCircle else EnglishCoachIcons.Crown,
                         contentDescription = "Premium",
-                        tint = EnglishCoachColors.Orange,
+                        tint = if (isPremium) EnglishCoachColors.Green else EnglishCoachColors.Orange,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -592,23 +611,25 @@ private fun ActionSection(
                     verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xxs)
                 ) {
                     Text(
-                        text = "解鎖 Premium 尊榮會員",
+                        text = if (isPremium) "EnglishCoach Premium 尊榮會員" else "解鎖 Premium 尊榮會員",
                         style = EnglishCoachTypography.button,
                         color = EnglishCoachColors.TextPrimary
                     )
                     Text(
-                        text = "解鎖全 3,600 單字庫、每日無限練習與智慧複習",
+                        text = if (isPremium) "已開通無限每日練習與智慧複習" else "解鎖全 3,600 單字庫、每日無限練習與智慧複習",
                         style = EnglishCoachTypography.caption,
                         color = EnglishCoachColors.TextSecondary
                     )
                 }
 
-                Icon(
-                    imageVector = EnglishCoachIcons.ChevronRight,
-                    contentDescription = null,
-                    tint = EnglishCoachColors.TextSecondary.copy(alpha = 0.5f),
-                    modifier = Modifier.size(14.dp)
-                )
+                if (!isPremium) {
+                    Icon(
+                        imageVector = EnglishCoachIcons.ChevronRight,
+                        contentDescription = null,
+                        tint = EnglishCoachColors.TextSecondary.copy(alpha = 0.5f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
         }
     }

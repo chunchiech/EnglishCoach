@@ -1,6 +1,9 @@
 package com.andy.englishcoach.ui.settings
 
 import androidx.lifecycle.ViewModel
+import com.andy.englishcoach.billing.DailyTargetPolicy
+import com.andy.englishcoach.billing.DefaultBillingRepository
+import com.andy.englishcoach.billing.PremiumEntitlementProvider
 import com.andy.englishcoach.data.model.ToeicTarget
 import com.andy.englishcoach.data.preference.DailyLearningPreferences
 import com.andy.englishcoach.data.preference.SettingsPreferences
@@ -19,7 +22,8 @@ import java.util.Locale
 class SettingsViewModel(
     private val settingsPreferences: SettingsPreferences,
     private val learningPreferences: DailyLearningPreferences,
-    private val versionName: String = "1.0"
+    private val versionName: String = "1.0",
+    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState(versionName = versionName))
@@ -38,6 +42,9 @@ class SettingsViewModel(
             todayStr,
             SharedPreferencesDailyLearningPreferences.DEFAULT_MAX_FREE_DAILY_QUESTIONS
         )
+        val isPremium = entitlementProvider.isPremium
+        val policy = DailyTargetPolicy.forIsPremium(isPremium)
+        val currentDailyTarget = policy.coerceTarget(settingsPreferences.getDailyTarget())
 
         _uiState.update {
             it.copy(
@@ -47,11 +54,28 @@ class SettingsViewModel(
                 hapticFeedbackEnabled = settingsPreferences.isHapticFeedbackEnabled(),
                 targetLevel = userLevel,
                 todayCompletedCount = practiceCount,
-                dailyTarget = SharedPreferencesDailyLearningPreferences.DEFAULT_MAX_FREE_DAILY_QUESTIONS,
+                dailyTarget = currentDailyTarget,
                 remainingFreeQuestions = remaining,
-                versionName = versionName
+                versionName = versionName,
+                isPremium = isPremium,
+                dailyTargetPolicy = policy
             )
         }
+    }
+
+    fun selectDailyTarget(target: Int): Boolean {
+        val isPremium = entitlementProvider.isPremium
+        val policy = DailyTargetPolicy.forIsPremium(isPremium)
+        if (!policy.isTargetAllowed(target)) {
+            return false
+        }
+        settingsPreferences.setDailyTarget(target)
+        refresh()
+        return true
+    }
+
+    fun setDailyTargetSheetVisible(visible: Boolean) {
+        _uiState.update { it.copy(showDailyTargetSheet = visible) }
     }
 
     fun updateProfile(name: String, emoji: String) {

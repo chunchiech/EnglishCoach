@@ -19,6 +19,9 @@ interface SettingsPreferences {
 
     fun isHapticFeedbackEnabled(): Boolean
     fun setHapticFeedbackEnabled(enabled: Boolean)
+
+    fun getDailyTarget(): Int
+    fun setDailyTarget(target: Int)
 }
 
 /**
@@ -33,11 +36,13 @@ class SharedPreferencesSettingsPreferences(
         const val KEY_USER_AVATAR_EMOJI = "user_avatar_emoji"
         const val KEY_AUTO_READ_TTS = "auto_read_tts_enabled"
         const val KEY_HAPTIC_FEEDBACK = "haptic_feedback_enabled"
+        const val KEY_DAILY_TARGET = "daily_learning_target"
 
         const val DEFAULT_DISPLAY_NAME = "英語學習者"
         const val DEFAULT_AVATAR_EMOJI = "🐶"
         const val DEFAULT_AUTO_READ_TTS = true
         const val DEFAULT_HAPTIC_FEEDBACK = true
+        const val DEFAULT_DAILY_TARGET = 10
 
         val AVAILABLE_AVATAR_EMOJIS = listOf(
             "🐶", "🍞", "🎓", "🌟", "🦁", "🐱",
@@ -87,6 +92,14 @@ class SharedPreferencesSettingsPreferences(
     override fun setHapticFeedbackEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_HAPTIC_FEEDBACK, enabled).apply()
     }
+
+    override fun getDailyTarget(): Int {
+        return prefs.getInt(KEY_DAILY_TARGET, DEFAULT_DAILY_TARGET)
+    }
+
+    override fun setDailyTarget(target: Int) {
+        prefs.edit().putInt(KEY_DAILY_TARGET, target).apply()
+    }
 }
 
 /**
@@ -96,7 +109,8 @@ class InMemorySettingsPreferences(
     private var displayName: String = SharedPreferencesSettingsPreferences.DEFAULT_DISPLAY_NAME,
     private var avatarEmoji: String = SharedPreferencesSettingsPreferences.DEFAULT_AVATAR_EMOJI,
     private var autoReadEnabled: Boolean = SharedPreferencesSettingsPreferences.DEFAULT_AUTO_READ_TTS,
-    private var hapticFeedbackEnabled: Boolean = SharedPreferencesSettingsPreferences.DEFAULT_HAPTIC_FEEDBACK
+    private var hapticFeedbackEnabled: Boolean = SharedPreferencesSettingsPreferences.DEFAULT_HAPTIC_FEEDBACK,
+    private var dailyTarget: Int = SharedPreferencesSettingsPreferences.DEFAULT_DAILY_TARGET
 ) : SettingsPreferences {
 
     override fun getDisplayName(): String = displayName
@@ -124,5 +138,11 @@ class InMemorySettingsPreferences(
 
     override fun setHapticFeedbackEnabled(enabled: Boolean) {
         hapticFeedbackEnabled = enabled
+    }
+
+    override fun getDailyTarget(): Int = dailyTarget
+
+    override fun setDailyTarget(target: Int) {
+        dailyTarget = target
     }
 }

@@ -26,5 +26,6 @@ data class DashboardUiState(
     val totalWords: Int = 0,
     val accuracy: Double = 0.0,
     val reviewCount: Int = 0,
+    val isPremium: Boolean = false,
     val isLoading: Boolean = false
 )

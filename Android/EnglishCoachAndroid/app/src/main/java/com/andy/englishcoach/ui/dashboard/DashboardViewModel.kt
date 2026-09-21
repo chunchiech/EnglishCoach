@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.andy.englishcoach.billing.DefaultBillingRepository
+import com.andy.englishcoach.billing.PremiumEntitlementProvider
 import java.time.Clock
 import java.time.LocalTime
 
@@ -30,7 +32,8 @@ class DashboardViewModel(
     private val reviewRepository: ReviewRepository,
     private val preferences: DailyLearningPreferences,
     private val database: EnglishCoachDatabase,
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState(isLoading = true))
@@ -147,6 +150,7 @@ class DashboardViewModel(
             totalWords = totalWords,
             accuracy = accuracy,
             reviewCount = reviewCount,
+            isPremium = entitlementProvider.isPremium,
             isLoading = false
         )
     }

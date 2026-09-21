@@ -17,6 +17,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+import com.andy.englishcoach.billing.DefaultBillingRepository
+import com.andy.englishcoach.billing.PremiumEntitlementProvider
+import com.andy.englishcoach.billing.ReviewQuizGatingPolicy
+
 data class ReviewUiState(
     val isLoading: Boolean = true,
     val reviewWords: List<ReviewWordItem> = emptyList(),
@@ -29,12 +33,14 @@ data class ReviewUiState(
     val answers: List<QuizAnswer> = emptyList(),
     val isQuizCompleted: Boolean = false,
     val remainingQuota: Int = 10,
-    val isDailyLimitReached: Boolean = false
+    val isDailyLimitReached: Boolean = false,
+    val isPremium: Boolean = false
 )
 
 class ReviewViewModel(
     private val reviewRepository: ReviewRepository,
-    private val ttsManager: TtsManager? = null
+    private val ttsManager: TtsManager? = null,
+    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReviewUiState())
@@ -55,14 +61,16 @@ class ReviewViewModel(
                 reviewRepository.getReviewWordItems(targetLevel = targetLevel)
             }
             val quota = reviewRepository.getRemainingQuota()
-            val limitReached = reviewRepository.isDailyLimitReached()
+            val isPremium = entitlementProvider.isPremium
+            val limitReached = if (isPremium) false else reviewRepository.isDailyLimitReached()
 
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     reviewWords = words,
                     remainingQuota = quota,
-                    isDailyLimitReached = limitReached
+                    isDailyLimitReached = limitReached,
+                    isPremium = isPremium
                 )
             }
         }

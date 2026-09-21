@@ -20,7 +20,8 @@ data class DailyLearningUiState(
     val isCardFlipped: Boolean = false,
     val isLoading: Boolean = true,
     val isCompleted: Boolean = false,
-    val isTierCompleted: Boolean = false
+    val isTierCompleted: Boolean = false,
+    val isPremium: Boolean = false
 ) {
     val currentWord: Word?
         get() = if (currentIndex in words.indices) words[currentIndex] else null

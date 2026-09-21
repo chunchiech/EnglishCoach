@@ -67,6 +67,7 @@ import com.andy.englishcoach.ui.theme.EnglishCoachTypography
 fun ReviewCenterScreen(
     viewModel: ReviewViewModel,
     onNavigateBack: () -> Unit,
+    onOpenPaywall: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -158,7 +159,8 @@ fun ReviewCenterScreen(
                         isDailyLimitReached = uiState.isDailyLimitReached,
                         onWordClick = { viewModel.selectWordForDetail(it) },
                         onSpeakWord = { viewModel.speakWord(it) },
-                        onStartReviewQuiz = { viewModel.startReviewQuiz() }
+                        onStartReviewQuiz = { viewModel.startReviewQuiz() },
+                        onOpenPaywall = onOpenPaywall
                     )
                 }
             }
@@ -182,7 +184,8 @@ private fun ReviewListView(
     isDailyLimitReached: Boolean,
     onWordClick: (Word) -> Unit,
     onSpeakWord: (String) -> Unit,
-    onStartReviewQuiz: () -> Unit
+    onStartReviewQuiz: () -> Unit,
+    onOpenPaywall: () -> Unit = {}
 ) {
     val questionCount = minOf(reviewWords.size, 10)
 
@@ -246,13 +249,17 @@ private fun ReviewListView(
                             .fillMaxWidth()
                             .height(50.dp)
                             .clip(EnglishCoachShapes.button)
-                            .background(EnglishCoachColors.Border),
+                            .background(EnglishCoachColors.Orange.copy(alpha = 0.12f))
+                            .clickable(
+                                role = Role.Button,
+                                onClick = onOpenPaywall
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "今日目標已達成（共 10 題）",
+                            text = "今日免費額度已滿（升級 Premium 無限制複習 ➜）",
                             style = EnglishCoachTypography.button,
-                            color = EnglishCoachColors.TextSecondary
+                            color = EnglishCoachColors.Orange
                         )
                     }
                 } else {
