@@ -4,6 +4,9 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.andy.englishcoach.notification.DailyReminderScheduler
+import com.andy.englishcoach.onboarding.model.LearningScenario
+import com.andy.englishcoach.onboarding.model.ReminderTimeOption
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -173,6 +176,40 @@ fun SettingsScreen(
                         title = "目標路徑",
                         value = state.targetLevel.displayName
                     )
+                    HorizontalDivider(color = EnglishCoachColors.CardBorder.copy(alpha = 0.5f))
+                    SettingsInfoRow(
+                        icon = EnglishCoachIcons.Star,
+                        iconTint = EnglishCoachColors.Purple,
+                        title = "學習情境",
+                        value = state.learningScenariosText?.replace("🎯 學習情境：", "") ?: "未設定",
+                        onClick = { viewModel.setLearningScenariosSheetVisible(true) }
+                    )
+                    SettingsSwitchRow(
+                        icon = EnglishCoachIcons.Notification,
+                        iconTint = EnglishCoachColors.Purple,
+                        title = "每日學習提醒",
+                        subtitle = if (state.isReminderEnabled) "每天 ${state.reminderTimeText} 提醒背單字" else "定時提醒你回來學習",
+                        checked = state.isReminderEnabled,
+                        onCheckedChange = { enabled ->
+                            viewModel.toggleReminder(
+                                enabled = enabled,
+                                onScheduleAlarm = { h, m ->
+                                    DailyReminderScheduler.scheduleDailyReminder(context, h, m)
+                                },
+                                onCancelAlarm = {
+                                    DailyReminderScheduler.cancelDailyReminder(context)
+                                }
+                            )
+                        }
+                    )
+                    if (state.isReminderEnabled) {
+                        HorizontalDivider(color = EnglishCoachColors.CardBorder.copy(alpha = 0.5f))
+                        SettingsInfoRow(
+                            title = "提醒時間",
+                            value = state.reminderTimeText,
+                            onClick = { viewModel.setReminderTimeDialogVisible(true) }
+                        )
+                    }
                     HorizontalDivider(color = EnglishCoachColors.CardBorder.copy(alpha = 0.5f))
                     SettingsInfoRow(
                         icon = EnglishCoachIcons.Quiz,
@@ -348,7 +385,105 @@ fun SettingsScreen(
                 }
             )
         }
+
+        if (state.showLearningScenariosSheet) {
+            LearningScenariosBottomSheet(
+                selectedScenarioIds = state.selectedScenarioIds,
+                onDismiss = { viewModel.setLearningScenariosSheetVisible(false) },
+                onToggle = { viewModel.toggleScenario(it) },
+                onMoveUp = { viewModel.moveScenarioUp(it) },
+                onMoveDown = { viewModel.moveScenarioDown(it) }
+            )
+        }
+
+        if (state.showReminderTimeDialog) {
+            ReminderTimeDialog(
+                selectedTimeText = state.reminderTimeText,
+                onDismiss = { viewModel.setReminderTimeDialogVisible(false) },
+                onSelectOption = { option ->
+                    viewModel.updateReminderTime(
+                        hour = option.hour,
+                        minute = option.minute,
+                        onScheduleAlarm = { h, m ->
+                            DailyReminderScheduler.scheduleDailyReminder(context, h, m)
+                        }
+                    )
+                }
+            )
+        }
     }
+}
+
+@Composable
+private fun ReminderTimeDialog(
+    selectedTimeText: String,
+    onDismiss: () -> Unit,
+    onSelectOption: (ReminderTimeOption) -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "選擇提醒時間",
+                style = EnglishCoachTypography.sectionHeader,
+                color = EnglishCoachColors.TextPrimary
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xs)) {
+                ReminderTimeOption.PRESET_OPTIONS.forEach { option ->
+                    val isSelected = selectedTimeText == option.displayTime
+                    androidx.compose.material3.Surface(
+                        shape = EnglishCoachShapes.card,
+                        color = if (isSelected) EnglishCoachColors.Purple.copy(alpha = 0.08f) else EnglishCoachColors.Surface,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isSelected) EnglishCoachColors.Purple else EnglishCoachColors.CardBorder
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelectOption(option) }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = EnglishCoachSpacing.md, vertical = EnglishCoachSpacing.sm),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = option.displayTime,
+                                    style = EnglishCoachTypography.sectionHeader,
+                                    color = EnglishCoachColors.TextPrimary
+                                )
+                                Text(
+                                    text = option.periodTag,
+                                    style = EnglishCoachTypography.caption,
+                                    color = EnglishCoachColors.TextSecondary
+                                )
+                            }
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = EnglishCoachIcons.Check,
+                                    contentDescription = "已選取",
+                                    tint = EnglishCoachColors.Purple,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("關閉", color = EnglishCoachColors.Purple)
+            }
+        },
+        containerColor = EnglishCoachColors.Surface,
+        shape = EnglishCoachShapes.dialog
+    )
 }
 
 @Composable
@@ -920,5 +1055,177 @@ private fun openThreads(context: Context) {
         context.startActivity(threadsIntent)
     } catch (_: Exception) {
         openUrl(context, "https://www.threads.net/@englishcoach_toeic_tw")
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LearningScenariosBottomSheet(
+    selectedScenarioIds: List<String>,
+    onDismiss: () -> Unit,
+    onToggle: (String) -> Unit,
+    onMoveUp: (String) -> Unit,
+    onMoveDown: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = EnglishCoachColors.Surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = EnglishCoachSpacing.screenHorizontal)
+                .padding(bottom = EnglishCoachSpacing.xxl)
+        ) {
+            Text(
+                text = "自訂您的學習情境",
+                style = EnglishCoachTypography.sectionTitle,
+                color = EnglishCoachColors.TextPrimary
+            )
+            Spacer(modifier = Modifier.height(EnglishCoachSpacing.xxs))
+            Text(
+                text = "可複選，已按您的選擇順序排列優先級。\n系統將依據您設定的情境優先推薦相關高頻單字。",
+                style = EnglishCoachTypography.caption,
+                color = EnglishCoachColors.TextSecondary
+            )
+
+            Spacer(modifier = Modifier.height(EnglishCoachSpacing.lg))
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LearningScenario.AVAILABLE_SCENARIOS.forEach { scenario ->
+                    val isSelected = selectedScenarioIds.contains(scenario.id)
+                    val priorityIndex = selectedScenarioIds.indexOf(scenario.id)
+
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = EnglishCoachColors.Surface),
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected) EnglishCoachColors.Purple else EnglishCoachColors.CardBorder
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggle(scenario.id) }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = scenario.title,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = EnglishCoachColors.TextPrimary
+                                    )
+
+                                    if (priorityIndex >= 0) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(EnglishCoachColors.Purple.copy(alpha = 0.15f))
+                                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "優先 ${priorityIndex + 1}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = EnglishCoachColors.Purple
+                                            )
+                                        }
+
+                                        if (selectedScenarioIds.size > 1) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            if (priorityIndex > 0) {
+                                                IconButton(
+                                                    onClick = { onMoveUp(scenario.id) },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = EnglishCoachIcons.ArrowUp,
+                                                        contentDescription = "提升優先級",
+                                                        tint = EnglishCoachColors.Purple,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+
+                                            if (priorityIndex < selectedScenarioIds.size - 1) {
+                                                IconButton(
+                                                    onClick = { onMoveDown(scenario.id) },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = EnglishCoachIcons.ArrowDown,
+                                                        contentDescription = "降低優先級",
+                                                        tint = EnglishCoachColors.Purple,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(2.dp))
+
+                                Text(
+                                    text = scenario.subtitle,
+                                    style = EnglishCoachTypography.caption,
+                                    color = EnglishCoachColors.TextSecondary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .border(
+                                        width = 2.dp,
+                                        color = if (isSelected) EnglishCoachColors.Purple else EnglishCoachColors.CardBorder,
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clip(CircleShape)
+                                            .background(EnglishCoachColors.Purple)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(EnglishCoachSpacing.xl))
+
+            Button(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EnglishCoachColors.Purple),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text(
+                    text = "完成",
+                    style = EnglishCoachTypography.button,
+                    color = Color.White
+                )
+            }
+        }
     }
 }

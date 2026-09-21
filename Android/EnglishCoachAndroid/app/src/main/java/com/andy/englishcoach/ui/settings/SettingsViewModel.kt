@@ -16,6 +16,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import com.andy.englishcoach.onboarding.data.OnboardingPreferences
+
 /**
  * ViewModel managing the state and actions for the Settings and Personalization screen.
  */
@@ -23,7 +25,8 @@ class SettingsViewModel(
     private val settingsPreferences: SettingsPreferences,
     private val learningPreferences: DailyLearningPreferences,
     private val versionName: String = "1.0",
-    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository()
+    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository(),
+    private val onboardingPreferences: OnboardingPreferences? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState(versionName = versionName))
@@ -45,6 +48,12 @@ class SettingsViewModel(
         val isPremium = entitlementProvider.isPremium
         val policy = DailyTargetPolicy.forIsPremium(isPremium)
         val currentDailyTarget = policy.coerceTarget(settingsPreferences.getDailyTarget())
+        val scenariosText = onboardingPreferences?.getScenarioDisplayText()
+        val selectedScenarios = onboardingPreferences?.getSelectedLearningContexts() ?: emptyList()
+        val reminderEnabled = onboardingPreferences?.isReminderEnabled() ?: false
+        val reminderHour = onboardingPreferences?.getReminderHour() ?: 19
+        val reminderMinute = onboardingPreferences?.getReminderMinute() ?: 0
+        val reminderTimeStr = String.format(Locale.getDefault(), "%02d:%02d", reminderHour, reminderMinute)
 
         _uiState.update {
             it.copy(
@@ -58,7 +67,11 @@ class SettingsViewModel(
                 remainingFreeQuestions = remaining,
                 versionName = versionName,
                 isPremium = isPremium,
-                dailyTargetPolicy = policy
+                dailyTargetPolicy = policy,
+                learningScenariosText = scenariosText,
+                selectedScenarioIds = selectedScenarios,
+                isReminderEnabled = reminderEnabled,
+                reminderTimeText = reminderTimeStr
             )
         }
     }
@@ -99,5 +112,72 @@ class SettingsViewModel(
 
     fun setEditProfileSheetVisible(visible: Boolean) {
         _uiState.update { it.copy(showEditProfileSheet = visible) }
+    }
+
+    fun setLearningScenariosSheetVisible(visible: Boolean) {
+        _uiState.update { it.copy(showLearningScenariosSheet = visible) }
+    }
+
+    fun toggleScenario(id: String) {
+        val updated = onboardingPreferences?.toggleScenario(id) ?: return
+        _uiState.update {
+            it.copy(
+                selectedScenarioIds = updated,
+                learningScenariosText = onboardingPreferences.getScenarioDisplayText()
+            )
+        }
+    }
+
+    fun moveScenarioUp(id: String) {
+        val updated = onboardingPreferences?.moveScenarioUp(id) ?: return
+        _uiState.update {
+            it.copy(
+                selectedScenarioIds = updated,
+                learningScenariosText = onboardingPreferences.getScenarioDisplayText()
+            )
+        }
+    }
+
+    fun moveScenarioDown(id: String) {
+        val updated = onboardingPreferences?.moveScenarioDown(id) ?: return
+        _uiState.update {
+            it.copy(
+                selectedScenarioIds = updated,
+                learningScenariosText = onboardingPreferences.getScenarioDisplayText()
+            )
+        }
+    }
+
+    fun setReminderTimeDialogVisible(visible: Boolean) {
+        _uiState.update { it.copy(showReminderTimeDialog = visible) }
+    }
+
+    fun updateReminderTime(
+        hour: Int,
+        minute: Int,
+        onScheduleAlarm: ((Int, Int) -> Unit)? = null
+    ) {
+        onboardingPreferences?.setReminderTime(hour, minute)
+        if (_uiState.value.isReminderEnabled) {
+            onScheduleAlarm?.invoke(hour, minute)
+        }
+        setReminderTimeDialogVisible(false)
+        refresh()
+    }
+
+    fun toggleReminder(
+        enabled: Boolean,
+        onScheduleAlarm: ((Int, Int) -> Unit)? = null,
+        onCancelAlarm: (() -> Unit)? = null
+    ) {
+        onboardingPreferences?.setReminderEnabled(enabled)
+        if (enabled) {
+            val hour = onboardingPreferences?.getReminderHour() ?: 19
+            val minute = onboardingPreferences?.getReminderMinute() ?: 0
+            onScheduleAlarm?.invoke(hour, minute)
+        } else {
+            onCancelAlarm?.invoke()
+        }
+        refresh()
     }
 }

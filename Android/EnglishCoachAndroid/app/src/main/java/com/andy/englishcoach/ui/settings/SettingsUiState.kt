@@ -23,5 +23,11 @@ data class SettingsUiState(
     val isPremium: Boolean = false,
     val dailyTargetPolicy: DailyTargetPolicy = DailyTargetPolicy.Free,
     val availableDailyTargets: List<Int> = listOf(5, 10, 20, 30, 50, 100, DailyTargetPolicy.UNLIMITED_TARGET),
-    val showDailyTargetSheet: Boolean = false
+    val showDailyTargetSheet: Boolean = false,
+    val learningScenariosText: String? = null,
+    val selectedScenarioIds: List<String> = emptyList(),
+    val isReminderEnabled: Boolean = false,
+    val reminderTimeText: String = "19:00",
+    val showLearningScenariosSheet: Boolean = false,
+    val showReminderTimeDialog: Boolean = false
 )

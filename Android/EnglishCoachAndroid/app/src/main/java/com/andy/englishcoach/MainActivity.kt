@@ -16,6 +16,9 @@ import com.andy.englishcoach.data.database.EnglishCoachDatabase
 import com.andy.englishcoach.data.database.VocabularyDatabaseInitializer
 import com.andy.englishcoach.data.preference.SharedPreferencesDailyLearningPreferences
 import com.andy.englishcoach.data.preference.SharedPreferencesSettingsPreferences
+import com.andy.englishcoach.onboarding.data.SharedPreferencesOnboardingPreferences
+import com.andy.englishcoach.ui.onboarding.OnboardingScreen
+import com.andy.englishcoach.ui.onboarding.OnboardingViewModel
 import com.andy.englishcoach.data.repository.DailyLearningRepository
 import com.andy.englishcoach.data.repository.QuizRepository
 import com.andy.englishcoach.data.repository.ReviewRepository
@@ -52,6 +55,7 @@ class MainActivity : ComponentActivity() {
         val database = EnglishCoachDatabase.getInstance(applicationContext)
         val preferences = SharedPreferencesDailyLearningPreferences.create(applicationContext)
         val settingsPreferences = SharedPreferencesSettingsPreferences.create(applicationContext)
+        val onboardingPreferences = SharedPreferencesOnboardingPreferences.create(applicationContext)
         val billing = GooglePlayBillingRepository(
             context = applicationContext,
             activityProvider = { this@MainActivity }
@@ -82,7 +86,8 @@ class MainActivity : ComponentActivity() {
             settingsPreferences = settingsPreferences,
             learningPreferences = preferences,
             versionName = versionName,
-            entitlementProvider = billing
+            entitlementProvider = billing,
+            onboardingPreferences = onboardingPreferences
         )
         val learningViewModel = DailyLearningViewModel(
             repository = learningRepository,
@@ -96,6 +101,11 @@ class MainActivity : ComponentActivity() {
             ttsManager = ttsManager,
             entitlementProvider = billing
         )
+        val onboardingViewModel = OnboardingViewModel(
+            onboardingPreferences = onboardingPreferences,
+            learningRepository = learningRepository,
+            ttsManager = ttsManager
+        )
 
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
@@ -107,17 +117,28 @@ class MainActivity : ComponentActivity() {
         setContent {
             EnglishCoachAndroidTheme {
                 val catalogState by billing.catalogState.collectAsState()
-                var currentScreen by remember { mutableStateOf("dashboard") }
+                val initialScreen = if (onboardingPreferences.isOnboardingCompleted()) "dashboard" else "onboarding"
+                var currentScreen by remember { mutableStateOf(initialScreen) }
                 var showPaywall by remember { mutableStateOf(false) }
                 var paywallStatusMessage by remember { mutableStateOf<String?>(null) }
 
-                // System back gesture: return to Dashboard from child screens
-                BackHandler(enabled = currentScreen != "dashboard") {
+                // System back gesture: return to Dashboard from child screens (Onboarding has its own BackHandler)
+                BackHandler(enabled = currentScreen != "dashboard" && currentScreen != "onboarding") {
                     currentScreen = "dashboard"
                     dashboardViewModel.refresh()
                 }
 
                 when (currentScreen) {
+                    "onboarding" -> {
+                        OnboardingScreen(
+                            viewModel = onboardingViewModel,
+                            onComplete = {
+                                currentScreen = "dashboard"
+                                dashboardViewModel.refresh()
+                                settingsViewModel.refresh()
+                            }
+                        )
+                    }
                     "dashboard" -> {
                         DashboardScreen(
                             viewModel = dashboardViewModel,

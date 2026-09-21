@@ -17,10 +17,13 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Policy
@@ -58,6 +61,7 @@ object EnglishCoachIcons {
     val Calendar: ImageVector = Icons.Filled.CalendarMonth
     val CalendarClock: ImageVector = Icons.Filled.CalendarToday
     val Refresh: ImageVector = Icons.Filled.Refresh
+    val Notification: ImageVector = androidx.compose.material.icons.Icons.Filled.Notifications
 
     // Badges / Honors
     val Crown: ImageVector = Icons.Filled.WorkspacePremium
@@ -71,6 +75,8 @@ object EnglishCoachIcons {
     val ChevronRight: ImageVector = Icons.AutoMirrored.Filled.ArrowForwardIos
     val ArrowBack: ImageVector = Icons.AutoMirrored.Filled.ArrowBack
     val ArrowForward: ImageVector = Icons.AutoMirrored.Filled.ArrowForward
+    val ArrowUp: ImageVector = Icons.Filled.KeyboardArrowUp
+    val ArrowDown: ImageVector = Icons.Filled.KeyboardArrowDown
 
     // Settings & Product Shell
     val Settings: ImageVector = Icons.Filled.Settings
