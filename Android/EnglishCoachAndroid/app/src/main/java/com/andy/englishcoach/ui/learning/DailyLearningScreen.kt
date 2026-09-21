@@ -1,9 +1,7 @@
 package com.andy.englishcoach.ui.learning
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,13 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,17 +29,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.andy.englishcoach.data.model.DailyLearningUiState
 import com.andy.englishcoach.data.model.ToeicTarget
+import com.andy.englishcoach.ui.theme.EnglishCoachColors
+import com.andy.englishcoach.ui.theme.EnglishCoachGradients
+import com.andy.englishcoach.ui.theme.EnglishCoachIcons
+import com.andy.englishcoach.ui.theme.EnglishCoachShapes
+import com.andy.englishcoach.ui.theme.EnglishCoachSpacing
+import com.andy.englishcoach.ui.theme.EnglishCoachTypography
 
 /**
  * Daily Learning screen following the EnglishCoach iOS implementation.
+ * Polished to match the EnglishCoach Design System.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +59,6 @@ fun DailyLearningScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    val purpleColor = Color(0xFF8A2BE2)
-    val indigoColor = Color(0xFF4B0082)
-    val blueColor = Color(0xFF1E90FF)
-    val orangeColor = Color(0xFFFF9500)
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -68,17 +66,20 @@ fun DailyLearningScreen(
                 title = {
                     Text(
                         text = "今日單字",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                        style = EnglishCoachTypography.screenTitle.copy(
+                            fontSize = 18.sp
+                        ),
+                        color = EnglishCoachColors.TextPrimary
                     )
                 },
                 navigationIcon = {
-                    TextButton(onClick = { onComplete() }) {
+                    TextButton(onClick = onComplete) {
                         Text(
                             text = "離開",
-                            color = purpleColor,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
+                            style = EnglishCoachTypography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = EnglishCoachColors.Purple
                         )
                     }
                 },
@@ -87,19 +88,21 @@ fun DailyLearningScreen(
                         TextButton(onClick = onNavigateToReview) {
                             Text(
                                 text = "智慧複習",
-                                color = purpleColor,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp
+                                style = EnglishCoachTypography.bodyMedium.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = EnglishCoachColors.Purple
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = EnglishCoachColors.Background
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = EnglishCoachColors.Background
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -108,31 +111,23 @@ fun DailyLearningScreen(
         ) {
             when {
                 uiState.isLoading -> {
-                    LoadingView(purpleColor = purpleColor)
+                    LoadingView()
                 }
                 uiState.isTierCompleted || uiState.words.isEmpty() -> {
                     TierCompletedScreen(
                         target = uiState.target,
-                        orangeColor = orangeColor,
-                        purpleColor = purpleColor,
-                        blueColor = blueColor,
-                        onBackToHome = { onComplete() }
+                        onBackToHome = onComplete
                     )
                 }
                 uiState.isCompleted -> {
                     CompletionScreen(
-                        purpleColor = purpleColor,
-                        blueColor = blueColor,
                         onStartQuiz = onStartQuiz,
-                        onBackToHome = { onComplete() }
+                        onBackToHome = onComplete
                     )
                 }
                 else -> {
                     LearningContent(
                         uiState = uiState,
-                        purpleColor = purpleColor,
-                        indigoColor = indigoColor,
-                        blueColor = blueColor,
                         onCardClick = { viewModel.onCardClicked() },
                         onSpeakWord = { viewModel.speakCurrentWord() },
                         onSpeakSentence = { viewModel.speakSentence(it) },
@@ -149,9 +144,6 @@ fun DailyLearningScreen(
 @Composable
 private fun LearningContent(
     uiState: DailyLearningUiState,
-    purpleColor: Color,
-    indigoColor: Color,
-    blueColor: Color,
     onCardClick: () -> Unit,
     onSpeakWord: () -> Unit,
     onSpeakSentence: (String) -> Unit,
@@ -162,22 +154,31 @@ private fun LearningContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = EnglishCoachSpacing.screenHorizontal),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         // Progress Header
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(top = EnglishCoachSpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.sm)
         ) {
-            Text(
-                text = "🎯 ${uiState.target.displayName}",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Target Badge
+            Box(
+                modifier = Modifier
+                    .clip(EnglishCoachShapes.pill)
+                    .background(EnglishCoachColors.Purple.copy(alpha = 0.1f))
+                    .padding(horizontal = EnglishCoachSpacing.md, vertical = EnglishCoachSpacing.xxs)
+            ) {
+                Text(
+                    text = uiState.target.displayName,
+                    style = EnglishCoachTypography.caption.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = EnglishCoachColors.Purple
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -186,15 +187,19 @@ private fun LearningContent(
             ) {
                 Text(
                     text = "卡片 ${uiState.currentIndex + 1} / ${uiState.totalWords}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = purpleColor
+                    style = EnglishCoachTypography.bodyMedium.copy(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = EnglishCoachColors.Purple
                 )
                 Text(
                     text = "已完成 ${uiState.completedPercentage}%",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = EnglishCoachTypography.caption.copy(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = EnglishCoachColors.TextSecondary
                 )
             }
 
@@ -203,24 +208,20 @@ private fun LearningContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clip(EnglishCoachShapes.chip)
+                    .background(EnglishCoachColors.Border)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(uiState.progressFraction)
                         .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(purpleColor, blueColor)
-                            )
-                        )
+                        .clip(EnglishCoachShapes.chip)
+                        .background(EnglishCoachGradients.purpleBlue)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.lg))
 
         // Word Card
         uiState.currentWord?.let { word ->
@@ -233,14 +234,14 @@ private fun LearningContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.lg))
 
         // Control Buttons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(bottom = EnglishCoachSpacing.xxl),
+            horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.lg)
         ) {
             // Previous Button
             Button(
@@ -248,78 +249,80 @@ private fun LearningContent(
                 enabled = !uiState.isFirstCard,
                 modifier = Modifier
                     .weight(1f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
+                    .height(54.dp),
+                shape = EnglishCoachShapes.button,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = purpleColor.copy(alpha = 0.1f),
-                    contentColor = purpleColor,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    containerColor = EnglishCoachColors.Purple.copy(alpha = 0.1f),
+                    contentColor = EnglishCoachColors.Purple,
+                    disabledContainerColor = EnglishCoachColors.Border.copy(alpha = 0.4f),
+                    disabledContentColor = EnglishCoachColors.TextSecondary.copy(alpha = 0.5f)
                 )
             ) {
-                Text(
-                    text = "← 上一個",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xxs)
+                ) {
+                    Icon(
+                        imageVector = EnglishCoachIcons.ChevronLeft,
+                        contentDescription = "上一個",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = "上一個",
+                        style = EnglishCoachTypography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
             }
 
             // Primary Action Button (Flip or Next)
             if (!uiState.isCardFlipped) {
-                Button(
-                    onClick = onFlip,
+                Box(
                     modifier = Modifier
                         .weight(1.4f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent
-                    ),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                        .height(54.dp)
+                        .clip(EnglishCoachShapes.button)
+                        .background(EnglishCoachGradients.purpleIndigo)
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onFlip
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(listOf(purpleColor, indigoColor)),
-                                shape = RoundedCornerShape(16.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "查看中文意思 👆",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
+                    Text(
+                        text = "查看中文意思",
+                        style = EnglishCoachTypography.button,
+                        color = Color.White
+                    )
                 }
             } else {
-                Button(
-                    onClick = onNext,
+                Box(
                     modifier = Modifier
                         .weight(1.4f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent
-                    ),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                        .height(54.dp)
+                        .clip(EnglishCoachShapes.button)
+                        .background(EnglishCoachGradients.purpleBlue)
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onNext
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(listOf(purpleColor, blueColor)),
-                                shape = RoundedCornerShape(16.dp)
-                            ),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xxs)
                     ) {
                         Text(
-                            text = if (uiState.isLastCard) "完成 ✓" else "下一題 →",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = if (uiState.isLastCard) "完成" else "下一個",
+                            style = EnglishCoachTypography.button,
                             color = Color.White
+                        )
+                        Icon(
+                            imageVector = if (uiState.isLastCard) EnglishCoachIcons.Check else EnglishCoachIcons.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -329,104 +332,96 @@ private fun LearningContent(
 }
 
 @Composable
-private fun LoadingView(purpleColor: Color) {
+private fun LoadingView() {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         CircularProgressIndicator(
-            color = purpleColor,
+            color = EnglishCoachColors.Purple,
             strokeWidth = 4.dp
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.lg))
         Text(
             text = "載入今日單字中...",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = EnglishCoachTypography.body,
+            color = EnglishCoachColors.TextSecondary
         )
     }
 }
 
 @Composable
 private fun CompletionScreen(
-    purpleColor: Color,
-    blueColor: Color,
     onStartQuiz: (() -> Unit)?,
     onBackToHome: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(EnglishCoachSpacing.screenHorizontal),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.xxxl))
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.lg)
         ) {
             Box(
                 modifier = Modifier
-                    .size(110.dp)
+                    .size(100.dp)
                     .clip(CircleShape)
-                    .background(purpleColor.copy(alpha = 0.1f)),
+                    .background(EnglishCoachColors.Purple.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "👑", fontSize = 52.sp)
+                Icon(
+                    imageVector = EnglishCoachIcons.Crown,
+                    contentDescription = "完成學習",
+                    tint = EnglishCoachColors.Orange,
+                    modifier = Modifier.size(52.dp)
+                )
             }
 
             Text(
                 text = "太棒了！",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                style = EnglishCoachTypography.hero,
+                color = EnglishCoachColors.TextPrimary
             )
 
             Text(
                 text = "你已完成今日單字學習。立即進行單字測驗以正式驗收成果！",
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = EnglishCoachTypography.body,
+                color = EnglishCoachColors.TextSecondary,
                 textAlign = TextAlign.Center,
-                lineHeight = 22.sp,
-                modifier = Modifier.padding(horizontal = 24.dp)
+                modifier = Modifier.padding(horizontal = EnglishCoachSpacing.screenHorizontal)
             )
         }
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.xxxl))
 
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.md)
         ) {
-            Button(
-                onClick = { onStartQuiz?.invoke() ?: onBackToHome() },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                    .height(54.dp)
+                    .clip(EnglishCoachShapes.button)
+                    .background(EnglishCoachGradients.purpleBlue)
+                    .clickable(
+                        role = Role.Button,
+                        onClick = { onStartQuiz?.invoke() ?: onBackToHome() }
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(listOf(purpleColor, blueColor)),
-                            shape = RoundedCornerShape(16.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "開始今日測驗 ➜",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
+                Text(
+                    text = "開始今日測驗 ➜",
+                    style = EnglishCoachTypography.button,
+                    color = Color.White
+                )
             }
 
             TextButton(
@@ -437,9 +432,10 @@ private fun CompletionScreen(
             ) {
                 Text(
                     text = "返回首頁",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = EnglishCoachTypography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = EnglishCoachColors.TextSecondary
                 )
             }
         }
@@ -449,69 +445,70 @@ private fun CompletionScreen(
 @Composable
 private fun TierCompletedScreen(
     target: ToeicTarget,
-    orangeColor: Color,
-    purpleColor: Color,
-    blueColor: Color,
     onBackToHome: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(EnglishCoachSpacing.screenHorizontal),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.xxxl))
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.lg)
         ) {
             Box(
                 modifier = Modifier
-                    .size(110.dp)
+                    .size(100.dp)
                     .clip(CircleShape)
-                    .background(orangeColor.copy(alpha = 0.12f)),
+                    .background(EnglishCoachColors.Orange.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "🏆", fontSize = 52.sp)
+                Icon(
+                    imageVector = EnglishCoachIcons.Trophy,
+                    contentDescription = "目標完成",
+                    tint = EnglishCoachColors.Orange,
+                    modifier = Modifier.size(52.dp)
+                )
             }
 
             Text(
-                text = "🎉 本目標等級單字已全部學完！",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                text = "本目標單字已全部學完！",
+                style = EnglishCoachTypography.screenTitle,
+                color = EnglishCoachColors.TextPrimary,
                 textAlign = TextAlign.Center
             )
 
             Text(
                 text = "恭喜您！${target.displayName} 的單字已全部學習完畢。\n建議前往「智慧複習中心」鞏固記憶，或切換至其他目標等級繼續挑戰！",
-                fontSize = 15.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = EnglishCoachTypography.body,
+                color = EnglishCoachColors.TextSecondary,
                 textAlign = TextAlign.Center,
-                lineHeight = 22.sp,
-                modifier = Modifier.padding(horizontal = 24.dp)
+                modifier = Modifier.padding(horizontal = EnglishCoachSpacing.screenHorizontal)
             )
         }
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.xxxl))
 
-        Button(
-            onClick = onBackToHome,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = purpleColor.copy(alpha = 0.1f),
-                contentColor = purpleColor
-            )
+                .height(54.dp)
+                .clip(EnglishCoachShapes.button)
+                .background(EnglishCoachColors.Purple.copy(alpha = 0.1f))
+                .clickable(
+                    role = Role.Button,
+                    onClick = onBackToHome
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "返回首頁",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
+                style = EnglishCoachTypography.button,
+                color = EnglishCoachColors.Purple
             )
         }
     }

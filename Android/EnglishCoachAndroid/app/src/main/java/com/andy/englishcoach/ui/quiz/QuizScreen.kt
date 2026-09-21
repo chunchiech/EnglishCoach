@@ -1,8 +1,5 @@
 package com.andy.englishcoach.ui.quiz
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,14 +14,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,18 +32,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.andy.englishcoach.data.model.quiz.QuizQuestion
+import com.andy.englishcoach.ui.theme.EnglishCoachColors
+import com.andy.englishcoach.ui.theme.EnglishCoachGradients
+import com.andy.englishcoach.ui.theme.EnglishCoachIcons
+import com.andy.englishcoach.ui.theme.EnglishCoachShapes
+import com.andy.englishcoach.ui.theme.EnglishCoachSpacing
+import com.andy.englishcoach.ui.theme.EnglishCoachTypography
 
 /**
  * Daily Quiz screen providing word testing, immediate answer feedback, and results transition.
- * Matches iOS EnglishCoach QuizView behavior and aesthetic.
+ * Polished with EnglishCoach Design System tokens and vector icons.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,11 +60,6 @@ fun QuizScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    val purpleColor = Color(0xFF8A2BE2)
-    val blueColor = Color(0xFF1E90FF)
-    val greenColor = Color(0xFF34C759)
-    val redColor = Color(0xFFFF3B30)
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -71,26 +67,29 @@ fun QuizScreen(
                 title = {
                     Text(
                         text = "單字測驗",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                        style = EnglishCoachTypography.screenTitle.copy(
+                            fontSize = 18.sp
+                        ),
+                        color = EnglishCoachColors.TextPrimary
                     )
                 },
                 navigationIcon = {
                     TextButton(onClick = onComplete) {
                         Text(
                             text = "離開",
-                            color = purpleColor,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
+                            style = EnglishCoachTypography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = EnglishCoachColors.Purple
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = EnglishCoachColors.Background
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = EnglishCoachColors.Background
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -104,13 +103,15 @@ fun QuizScreen(
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        CircularProgressIndicator(color = purpleColor, strokeWidth = 4.dp)
-                        Spacer(modifier = Modifier.height(16.dp))
+                        CircularProgressIndicator(
+                            color = EnglishCoachColors.Purple,
+                            strokeWidth = 4.dp
+                        )
+                        Spacer(modifier = Modifier.height(EnglishCoachSpacing.lg))
                         Text(
                             text = "準備測驗題目中...",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = EnglishCoachTypography.body,
+                            color = EnglishCoachColors.TextSecondary
                         )
                     }
                 }
@@ -123,7 +124,7 @@ fun QuizScreen(
                     )
                 }
                 uiState.questions.isEmpty() -> {
-                    EmptyQuizView(purpleColor = purpleColor, onBack = onComplete)
+                    EmptyQuizView(onBack = onComplete)
                 }
                 else -> {
                     QuizQuestionContent(
@@ -134,10 +135,6 @@ fun QuizScreen(
                         selectedOption = uiState.selectedOption,
                         isAnswered = uiState.isAnswered,
                         isLastQuestion = uiState.isLastQuestion,
-                        purpleColor = purpleColor,
-                        blueColor = blueColor,
-                        greenColor = greenColor,
-                        redColor = redColor,
                         onOptionSelected = { viewModel.selectOption(it) },
                         onSpeakWord = { viewModel.speakWord(uiState.currentQuestion!!.word.word) },
                         onNextQuestion = { viewModel.nextQuestion() }
@@ -157,10 +154,6 @@ private fun QuizQuestionContent(
     selectedOption: String?,
     isAnswered: Boolean,
     isLastQuestion: Boolean,
-    purpleColor: Color,
-    blueColor: Color,
-    greenColor: Color,
-    redColor: Color,
     onOptionSelected: (String) -> Unit,
     onSpeakWord: () -> Unit,
     onNextQuestion: () -> Unit
@@ -168,28 +161,32 @@ private fun QuizQuestionContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = EnglishCoachSpacing.screenHorizontal),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         // Progress header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = EnglishCoachSpacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "題目 ${currentIndex + 1} / $totalQuestions",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = purpleColor
+                style = EnglishCoachTypography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = EnglishCoachColors.Purple
             )
             Text(
                 text = "正確：$correctCount",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = greenColor
+                style = EnglishCoachTypography.caption.copy(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = EnglishCoachColors.Green
             )
         }
 
@@ -198,40 +195,40 @@ private fun QuizQuestionContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp),
-            shape = RoundedCornerShape(20.dp),
+            shape = EnglishCoachShapes.secondaryCard,
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = EnglishCoachColors.Surface
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            border = androidx.compose.foundation.BorderStroke(1.dp, EnglishCoachColors.Border.copy(alpha = 0.5f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp),
+                    .padding(EnglishCoachSpacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(EnglishCoachSpacing.xxs))
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.sm)
                 ) {
                     Text(
                         text = currentQuestion.word.word,
-                        fontSize = 38.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        style = EnglishCoachTypography.cardWord.copy(
+                            fontSize = 34.sp
+                        ),
+                        color = EnglishCoachColors.TextPrimary,
                         textAlign = TextAlign.Center
                     )
 
                     if (currentQuestion.word.phonetic.isNotBlank()) {
                         Text(
                             text = currentQuestion.word.phonetic,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            fontFamily = FontFamily.Serif,
-                            color = purpleColor
+                            style = EnglishCoachTypography.ipa,
+                            color = EnglishCoachColors.Purple
                         )
                     }
                 }
@@ -239,13 +236,22 @@ private fun QuizQuestionContent(
                 // Speaker icon button
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(46.dp)
                         .clip(CircleShape)
-                        .background(purpleColor)
-                        .clickable(onClick = onSpeakWord),
+                        .background(EnglishCoachGradients.purpleBlue)
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = "朗讀單字",
+                            onClick = onSpeakWord
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "🔊", fontSize = 18.sp)
+                    Icon(
+                        imageVector = EnglishCoachIcons.Volume,
+                        contentDescription = "朗讀單字",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
@@ -253,7 +259,7 @@ private fun QuizQuestionContent(
         // 4 Options
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.md)
         ) {
             currentQuestion.options.forEach { option ->
                 val isCorrectChoice = option == currentQuestion.correctOption
@@ -261,61 +267,74 @@ private fun QuizQuestionContent(
 
                 val (bgColor, borderColor, textColor) = when {
                     isAnswered && isCorrectChoice -> Triple(
-                        greenColor.copy(alpha = 0.15f),
-                        greenColor,
-                        greenColor
+                        EnglishCoachColors.Green.copy(alpha = 0.12f),
+                        EnglishCoachColors.Green,
+                        EnglishCoachColors.Green
                     )
                     isAnswered && isSelectedChoice -> Triple(
-                        redColor.copy(alpha = 0.15f),
-                        redColor,
-                        redColor
+                        EnglishCoachColors.Red.copy(alpha = 0.12f),
+                        EnglishCoachColors.Red,
+                        EnglishCoachColors.Red
                     )
                     isAnswered -> Triple(
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        EnglishCoachColors.Surface.copy(alpha = 0.6f),
                         Color.Transparent,
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        EnglishCoachColors.TextSecondary.copy(alpha = 0.5f)
                     )
                     else -> Triple(
-                        MaterialTheme.colorScheme.surface,
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        MaterialTheme.colorScheme.onSurface
+                        EnglishCoachColors.Surface,
+                        EnglishCoachColors.Border.copy(alpha = 0.6f),
+                        EnglishCoachColors.TextPrimary
                     )
                 }
 
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(EnglishCoachShapes.option)
                         .border(
                             width = if (isAnswered && (isCorrectChoice || isSelectedChoice)) 2.dp else 1.dp,
                             color = borderColor,
-                            shape = RoundedCornerShape(14.dp)
+                            shape = EnglishCoachShapes.option
                         )
-                        .clickable(enabled = !isAnswered) {
-                            onOptionSelected(option)
-                        },
-                    shape = RoundedCornerShape(14.dp),
+                        .clickable(
+                            role = Role.RadioButton,
+                            enabled = !isAnswered,
+                            onClick = { onOptionSelected(option) }
+                        ),
+                    shape = EnglishCoachShapes.option,
                     colors = CardDefaults.cardColors(containerColor = bgColor)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                            .padding(horizontal = EnglishCoachSpacing.xl, vertical = EnglishCoachSpacing.lg),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
                             text = option,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            style = EnglishCoachTypography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
                             color = textColor
                         )
 
                         if (isAnswered) {
                             if (isCorrectChoice) {
-                                Text(text = "✓", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = greenColor)
+                                Icon(
+                                    imageVector = EnglishCoachIcons.CheckCircle,
+                                    contentDescription = "正確",
+                                    tint = EnglishCoachColors.Green,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             } else if (isSelectedChoice) {
-                                Text(text = "✕", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = redColor)
+                                Icon(
+                                    imageVector = EnglishCoachIcons.CloseCircle,
+                                    contentDescription = "錯誤",
+                                    tint = EnglishCoachColors.Red,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                     }
@@ -323,38 +342,41 @@ private fun QuizQuestionContent(
             }
         }
 
-        // Bottom Action (Next button or spacer)
+        // Bottom Action (Next button)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp)
-                .height(64.dp),
+                .padding(bottom = EnglishCoachSpacing.xxl)
+                .height(56.dp),
             contentAlignment = Alignment.Center
         ) {
             if (isAnswered) {
-                Button(
-                    onClick = onNextQuestion,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                        .height(54.dp)
+                        .clip(EnglishCoachShapes.button)
+                        .background(EnglishCoachGradients.purpleBlue)
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onNextQuestion
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(listOf(purpleColor, blueColor)),
-                                shape = RoundedCornerShape(16.dp)
-                            ),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xs)
                     ) {
                         Text(
-                            text = if (isLastQuestion) "完成測驗" else "下一題",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = if (isLastQuestion) "查看測驗結果" else "下一題",
+                            style = EnglishCoachTypography.button,
                             color = Color.White
+                        )
+                        Icon(
+                            imageVector = if (isLastQuestion) EnglishCoachIcons.Trophy else EnglishCoachIcons.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -364,36 +386,54 @@ private fun QuizQuestionContent(
 }
 
 @Composable
-private fun EmptyQuizView(purpleColor: Color, onBack: () -> Unit) {
+private fun EmptyQuizView(onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(EnglishCoachSpacing.screenHorizontal),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "📝", fontSize = 54.sp)
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(90.dp)
+                .clip(CircleShape)
+                .background(EnglishCoachColors.Purple.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = EnglishCoachIcons.Quiz,
+                contentDescription = null,
+                tint = EnglishCoachColors.Purple,
+                modifier = Modifier.size(44.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.lg))
         Text(
-            text = "無可用於測驗的單字",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            text = "今日已無待測驗題目",
+            style = EnglishCoachTypography.screenTitle,
+            color = EnglishCoachColors.TextPrimary
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.sm))
         Text(
-            text = "請先學習今日單字以生成測驗題目。",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = "請先進行今日單字學習，或前往智慧複習中心挑戰！",
+            style = EnglishCoachTypography.body,
+            color = EnglishCoachColors.TextSecondary,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(EnglishCoachSpacing.xxl))
         Button(
             onClick = onBack,
-            colors = ButtonDefaults.buttonColors(containerColor = purpleColor),
-            shape = RoundedCornerShape(12.dp)
+            shape = EnglishCoachShapes.button,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = EnglishCoachColors.Purple.copy(alpha = 0.1f),
+                contentColor = EnglishCoachColors.Purple
+            )
         ) {
-            Text(text = "返回", fontWeight = FontWeight.Bold)
+            Text(
+                text = "返回首頁",
+                style = EnglishCoachTypography.button
+            )
         }
     }
 }

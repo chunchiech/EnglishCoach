@@ -1,0 +1,8 @@
+# EnglishCoach Release Signing Configuration Template
+# Copy this file to 'key.properties' in this directory and populate with your keystore credentials.
+# WARNING: NEVER commit 'key.properties', '*.jks', or '*.keystore' into Git repository!
+
+storeFile=
+storePassword=
+keyAlias=
+keyPassword=

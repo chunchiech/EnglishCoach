@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.andy.englishcoach.data.model.DailyLearningUiState
 import com.andy.englishcoach.data.model.ToeicTarget
+import com.andy.englishcoach.data.preference.SettingsPreferences
 import com.andy.englishcoach.data.repository.DailyLearningRepository
 import com.andy.englishcoach.util.TtsManager
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +22,8 @@ import kotlinx.coroutines.withContext
  */
 class DailyLearningViewModel(
     private val repository: DailyLearningRepository,
-    private val ttsManager: TtsManager? = null
+    private val ttsManager: TtsManager? = null,
+    private val settingsPreferences: SettingsPreferences? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DailyLearningUiState())
@@ -52,8 +54,8 @@ class DailyLearningViewModel(
                 )
             }
 
-            // Auto-pronounce first word if available
-            if (words.isNotEmpty()) {
+            // Auto-pronounce first word if available and auto-read is enabled
+            if (words.isNotEmpty() && (settingsPreferences?.isAutoReadEnabled() != false)) {
                 ttsManager?.speak(words[0].word)
             }
         }
@@ -84,8 +86,10 @@ class DailyLearningViewModel(
                     isCardFlipped = false
                 )
             }
-            // Auto-pronounce next word
-            ttsManager?.speak(state.words[nextIndex].word)
+            // Auto-pronounce next word if auto-read is enabled
+            if (settingsPreferences?.isAutoReadEnabled() != false) {
+                ttsManager?.speak(state.words[nextIndex].word)
+            }
         } else {
             // Completed all cards for today
             viewModelScope.launch(Dispatchers.IO) {
