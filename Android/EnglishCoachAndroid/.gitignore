@@ -19,3 +19,6 @@ local.properties
 key.properties
 *.jks
 *.keystore
+keystore/
+*service-account*.json
+*credentials*.json

@@ -61,3 +61,11 @@ xcuserdata/
 
 # Log files
 *.log
+
+# Android Signing Credentials & Keystores
+*.jks
+*.keystore
+keystore/
+key.properties
+*service-account*.json
+*credentials*.json
