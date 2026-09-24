@@ -26,7 +26,8 @@ class DailyLearningViewModel(
     private val repository: DailyLearningRepository,
     private val ttsManager: TtsManager? = null,
     private val settingsPreferences: SettingsPreferences? = null,
-    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository()
+    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository(),
+    private val preferences: com.andy.englishcoach.data.preference.DailyLearningPreferences? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DailyLearningUiState())
@@ -40,27 +41,49 @@ class DailyLearningViewModel(
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             val selectedTarget = target ?: repository.getUserTargetLevel()
-            val words = withContext(Dispatchers.IO) {
-                repository.getTodayWords(selectedTarget)
+            val isPremium = entitlementProvider.isPremium
+            val policy = com.andy.englishcoach.billing.DailyTargetPolicy.forIsPremium(isPremium)
+            val currentTarget = policy.coerceTarget(settingsPreferences?.getDailyTarget() ?: 10)
+            val effectiveLimit = if (currentTarget == com.andy.englishcoach.billing.DailyTargetPolicy.UNLIMITED_TARGET) {
+                DailyLearningRepository.UNLIMITED_BATCH_SIZE
+            } else {
+                currentTarget
             }
-            val isTierCompleted = words.isEmpty()
+
+            val allTodayWords = withContext(Dispatchers.IO) {
+                repository.getTodayWords(selectedTarget, limit = effectiveLimit)
+            }
+
+            val today = repository.getTodayDateString()
+            val practiceDate = preferences?.getDailyPracticeDate()
+            val todayCompleted = if (practiceDate == today) (preferences?.getDailyPracticeCount() ?: 0) else 0
+
+            val sessionWords = if (todayCompleted > 0 && todayCompleted < allTodayWords.size) {
+                allTodayWords.drop(todayCompleted)
+            } else if (todayCompleted >= allTodayWords.size && allTodayWords.isNotEmpty()) {
+                allTodayWords
+            } else {
+                allTodayWords
+            }
+
+            val isTierCompleted = sessionWords.isEmpty()
 
             _uiState.update {
                 it.copy(
                     target = selectedTarget,
-                    words = words,
+                    words = sessionWords,
                     currentIndex = 0,
                     isCardFlipped = false,
                     isLoading = false,
                     isCompleted = false,
                     isTierCompleted = isTierCompleted,
-                    isPremium = entitlementProvider.isPremium
+                    isPremium = isPremium
                 )
             }
 
             // Auto-pronounce first word if available and auto-read is enabled
-            if (words.isNotEmpty() && (settingsPreferences?.isAutoReadEnabled() != false)) {
-                ttsManager?.speak(words[0].word)
+            if (sessionWords.isNotEmpty() && (settingsPreferences?.isAutoReadEnabled() != false)) {
+                ttsManager?.speak(sessionWords[0].word)
             }
         }
     }
@@ -134,11 +157,14 @@ class DailyLearningViewModel(
 
     class Factory(
         private val repository: DailyLearningRepository,
-        private val ttsManager: TtsManager? = null
+        private val ttsManager: TtsManager? = null,
+        private val settingsPreferences: SettingsPreferences? = null,
+        private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository(),
+        private val preferences: com.andy.englishcoach.data.preference.DailyLearningPreferences? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return DailyLearningViewModel(repository, ttsManager) as T
+            return DailyLearningViewModel(repository, ttsManager, settingsPreferences, entitlementProvider, preferences) as T
         }
     }
 }

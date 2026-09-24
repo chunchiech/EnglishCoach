@@ -618,7 +618,7 @@ private fun ActionSection(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = !isPremium, role = Role.Button) {
+                .clickable(role = Role.Button) {
                     onPremiumClicked()
                 },
             shape = EnglishCoachShapes.secondaryCard,
@@ -671,7 +671,7 @@ private fun ActionSection(
                     verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xxs)
                 ) {
                     Text(
-                        text = if (isPremium) "EnglishCoach Premium 尊榮會員" else "解鎖 Premium 尊榮會員",
+                        text = if (isPremium) "Premium 會員" else "解鎖 Premium 尊榮會員",
                         style = EnglishCoachTypography.button,
                         color = EnglishCoachColors.TextPrimary
                     )
@@ -682,11 +682,21 @@ private fun ActionSection(
                     )
                 }
 
-                if (!isPremium) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xxs)
+                ) {
+                    if (isPremium) {
+                        Text(
+                            text = "管理方案",
+                            style = EnglishCoachTypography.caption.copy(fontWeight = FontWeight.SemiBold),
+                            color = EnglishCoachColors.Purple
+                        )
+                    }
                     Icon(
                         imageVector = EnglishCoachIcons.ChevronRight,
-                        contentDescription = null,
-                        tint = EnglishCoachColors.TextSecondary.copy(alpha = 0.5f),
+                        contentDescription = if (isPremium) "管理方案" else "升級 Premium",
+                        tint = if (isPremium) EnglishCoachColors.Purple else EnglishCoachColors.TextSecondary.copy(alpha = 0.5f),
                         modifier = Modifier.size(14.dp)
                     )
                 }

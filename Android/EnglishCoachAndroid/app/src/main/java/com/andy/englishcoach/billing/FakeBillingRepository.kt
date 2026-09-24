@@ -29,6 +29,13 @@ class FakeBillingRepository(
     var failureErrorMessage: String = "Google Play 服務暫時無法連線"
     var pendingMessage: String = "付款處理中，完成付款後 Premium 將會啟用"
 
+    var mockActiveSubscriptionPurchaseToken: String? = null
+    override val activeSubscriptionPurchaseToken: String?
+        get() = mockActiveSubscriptionPurchaseToken ?: (recordedPurchases.lastOrNull {
+            val p = PremiumProduct.entries.firstOrNull { prod -> prod.productId == it.productId }
+            p?.isSubscription == true && it.purchaseState == com.android.billingclient.api.Purchase.PurchaseState.PURCHASED
+        }?.purchaseToken)
+
     private var activeProduct: PremiumProduct? = (initialEntitlement as? PremiumEntitlement.Premium)?.product
     val recordedPurchases = mutableListOf<PurchaseRecord>()
 

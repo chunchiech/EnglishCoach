@@ -25,6 +25,11 @@ interface DailyLearningPreferences {
     fun setDailyPracticeCount(count: Int)
     fun getRemainingPracticeQuota(date: String, dailyLimit: Int = 10): Int
     fun recordPracticeQuestions(date: String, count: Int)
+    fun getDailyQuizDate(): String?
+    fun setDailyQuizDate(date: String)
+    fun getDailyQuizCount(): Int
+    fun setDailyQuizCount(count: Int)
+    fun recordQuizQuestions(date: String, count: Int)
 }
 
 /**
@@ -42,6 +47,8 @@ class SharedPreferencesDailyLearningPreferences(
         const val KEY_QUIZ_COMPLETED_DATE = "today_quiz_completed_date"
         const val KEY_DAILY_PRACTICE_DATE = "daily_practice_date"
         const val KEY_DAILY_PRACTICE_COUNT = "daily_practice_completed_count"
+        const val KEY_DAILY_QUIZ_DATE = "daily_quiz_date"
+        const val KEY_DAILY_QUIZ_COUNT = "daily_quiz_completed_count"
         const val KEY_USER_LEVEL = "user_level"
         const val DEFAULT_USER_LEVEL = "toeic_basic"
         const val DEFAULT_MAX_FREE_DAILY_QUESTIONS = 10
@@ -130,6 +137,31 @@ class SharedPreferencesDailyLearningPreferences(
             .apply()
     }
 
+    override fun getDailyQuizDate(): String? {
+        return prefs.getString(KEY_DAILY_QUIZ_DATE, null)
+    }
+
+    override fun setDailyQuizDate(date: String) {
+        prefs.edit().putString(KEY_DAILY_QUIZ_DATE, date).apply()
+    }
+
+    override fun getDailyQuizCount(): Int {
+        return prefs.getInt(KEY_DAILY_QUIZ_COUNT, 0)
+    }
+
+    override fun setDailyQuizCount(count: Int) {
+        prefs.edit().putInt(KEY_DAILY_QUIZ_COUNT, count).apply()
+    }
+
+    override fun recordQuizQuestions(date: String, count: Int) {
+        val savedDate = getDailyQuizDate()
+        val currentCount = if (savedDate != date) 0 else getDailyQuizCount()
+        prefs.edit()
+            .putString(KEY_DAILY_QUIZ_DATE, date)
+            .putInt(KEY_DAILY_QUIZ_COUNT, currentCount + count)
+            .apply()
+    }
+
     override fun clearDailyCache(level: String?) {
         val editor = prefs.edit()
         if (level != null) {
@@ -140,6 +172,8 @@ class SharedPreferencesDailyLearningPreferences(
             editor.remove(KEY_QUIZ_COMPLETED_DATE)
             editor.remove(KEY_DAILY_PRACTICE_DATE)
             editor.remove(KEY_DAILY_PRACTICE_COUNT)
+            editor.remove(KEY_DAILY_QUIZ_DATE)
+            editor.remove(KEY_DAILY_QUIZ_COUNT)
             val allKeys = prefs.all.keys
             for (key in allKeys) {
                 if (key.startsWith(KEY_DATE_PREFIX) || key.startsWith(KEY_IDS_PREFIX)) {
@@ -164,6 +198,8 @@ class InMemoryDailyLearningPreferences(
     private var quizCompletedDate: String? = null
     private var dailyPracticeDate: String? = null
     private var dailyPracticeCount: Int = 0
+    private var dailyQuizDate: String? = null
+    private var dailyQuizCount: Int = 0
 
     override fun getTodayWordsDate(level: String): String? = dates[level]
 
@@ -221,6 +257,27 @@ class InMemoryDailyLearningPreferences(
         }
     }
 
+    override fun getDailyQuizDate(): String? = dailyQuizDate
+
+    override fun setDailyQuizDate(date: String) {
+        dailyQuizDate = date
+    }
+
+    override fun getDailyQuizCount(): Int = dailyQuizCount
+
+    override fun setDailyQuizCount(count: Int) {
+        dailyQuizCount = count
+    }
+
+    override fun recordQuizQuestions(date: String, count: Int) {
+        if (dailyQuizDate != date) {
+            dailyQuizDate = date
+            dailyQuizCount = count
+        } else {
+            dailyQuizCount += count
+        }
+    }
+
     override fun clearDailyCache(level: String?) {
         if (level != null) {
             dates.remove(level)
@@ -232,6 +289,8 @@ class InMemoryDailyLearningPreferences(
             quizCompletedDate = null
             dailyPracticeDate = null
             dailyPracticeCount = 0
+            dailyQuizDate = null
+            dailyQuizCount = 0
         }
     }
 }

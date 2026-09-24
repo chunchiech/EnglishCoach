@@ -46,6 +46,11 @@ class DashboardViewModel(
 
     init {
         refresh()
+        viewModelScope.launch {
+            entitlementProvider.entitlement.collect {
+                refresh()
+            }
+        }
     }
 
     fun setTargetLevel(target: ToeicTarget) {
@@ -60,6 +65,18 @@ class DashboardViewModel(
             return false
         }
         settingsPreferences.setDailyTarget(target)
+
+        val today = learningRepository.getTodayDateString()
+        val practiceDate = preferences.getDailyPracticeDate()
+        val todayCompletedCount = if (practiceDate == today) preferences.getDailyPracticeCount() else 0
+
+        // If target is greater than what has been completed, or target is unlimited:
+        // Clear completion dates so the remaining new words can be learned and quizzed
+        if (target == DailyTargetPolicy.UNLIMITED_TARGET || target > todayCompletedCount) {
+            preferences.setLearningCompletedDate("")
+            preferences.setQuizCompletedDate("")
+        }
+
         refresh()
         return true
     }
@@ -105,9 +122,8 @@ class DashboardViewModel(
         val isUnlimited = dailyTarget == DailyTargetPolicy.UNLIMITED_TARGET
         val maxPracticeQuota = SharedPreferencesDailyLearningPreferences.DEFAULT_MAX_FREE_DAILY_QUESTIONS
 
-        val isLearningCompleted = learningRepository.isTodayLearningCompleted()
-        val isQuizCompleted = quizRepository.isTodayQuizCompleted()
-        val todayWords = learningRepository.getTodayWords(target = target)
+        val effectiveLimit = if (isUnlimited) DailyLearningRepository.UNLIMITED_BATCH_SIZE else dailyTarget
+        val todayWords = learningRepository.getTodayWords(target = target, limit = effectiveLimit)
         val reviewCount = reviewRepository.getReviewCount(date = today, targetLevel = target)
 
         // Quota & Quiz counts
@@ -119,16 +135,19 @@ class DashboardViewModel(
             dailyPracticeQuotaUsed >= maxPracticeQuota
         }
 
-        val todayQuizCompletedCount = if (isQuizCompleted) {
-            if (isUnlimited) dailyPracticeQuotaUsed.coerceAtLeast(10) else dailyTarget
+        val isQuizCompleted = quizRepository.isTodayQuizCompleted()
+        val isLearningCompleted = learningRepository.isTodayLearningCompleted()
+
+        val todayQuizCompletedCount = if (isUnlimited) {
+            dailyPracticeQuotaUsed
         } else {
-            0
+            minOf(dailyPracticeQuotaUsed, dailyTarget)
         }
 
         val maxQuizCount = if (isUnlimited) DailyTargetPolicy.UNLIMITED_TARGET else dailyTarget
 
         val todayProgress = when {
-            isUnlimited -> if (dailyPracticeQuotaUsed > 0 || isQuizCompleted) 1f else 0f
+            isUnlimited -> if (dailyPracticeQuotaUsed > 0) 1f else 0f
             dailyTarget > 0 -> (dailyPracticeQuotaUsed.toFloat() / dailyTarget.toFloat()).coerceIn(0f, 1f)
             else -> 0f
         }
@@ -159,7 +178,7 @@ class DashboardViewModel(
             isLearningDoneAwaitingQuiz -> {
                 "開始今日測驗 ➜" to DashboardCtaAction.START_QUIZ
             }
-            isDailyLimitReached || (isLearningCompleted && isQuizCompleted) -> {
+            isDailyLimitReached -> {
                 "🎉 今日學習已完成" to DashboardCtaAction.COMPLETED
             }
             todayWords.isEmpty() && learnedWords > 0 -> {
@@ -195,6 +214,7 @@ class DashboardViewModel(
             accuracy = accuracy,
             reviewCount = reviewCount,
             isPremium = isPremium,
+            currentEntitlement = entitlementProvider.entitlement.value,
             isLoading = false,
             dailyTarget = dailyTarget
         )

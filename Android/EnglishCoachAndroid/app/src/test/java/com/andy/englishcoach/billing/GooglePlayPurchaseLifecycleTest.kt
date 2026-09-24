@@ -18,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -797,6 +798,216 @@ class GooglePlayPurchaseLifecycleTest {
         paramsList = fakeAdapter.lastBillingFlowParams!!.zzk()
         firstParams = paramsList[0] as BillingFlowParams.ProductDetailsParams
         assertEquals("lifetime_one_time_token_789", firstParams.zzb())
+    }
+
+    // 28. testScenarioF_monthlyToAnnual_attachesSubscriptionUpdateParams
+    @Test
+    fun testScenarioF_monthlyToAnnual_attachesSubscriptionUpdateParams() = runBlocking {
+        val monthlyDetails = createProductDetails("""
+            {
+                "productId": "com.andy.englishcoach.premium.monthly",
+                "type": "subs",
+                "title": "月繳方案",
+                "name": "Monthly",
+                "description": "Monthly access",
+                "subscriptionOfferDetails": [
+                    {
+                        "basePlanId": "monthly-plan",
+                        "offerIdToken": "monthly_token_111",
+                        "pricingPhases": [{"priceAmountMicros": 90000000, "priceCurrencyCode": "TWD", "formattedPrice": "NT$90", "billingPeriod": "P1M", "recurrenceMode": 1}]
+                    }
+                ]
+            }
+        """.trimIndent())
+        val annualDetails = createProductDetails("""
+            {
+                "productId": "com.andy.englishcoach.premium.annual",
+                "type": "subs",
+                "title": "年繳方案",
+                "name": "Annual",
+                "description": "Annual access",
+                "subscriptionOfferDetails": [
+                    {
+                        "basePlanId": "annual-plan",
+                        "offerIdToken": "annual_token_222",
+                        "pricingPhases": [{"priceAmountMicros": 690000000, "priceCurrencyCode": "TWD", "formattedPrice": "NT$690", "billingPeriod": "P1Y", "recurrenceMode": 1}]
+                    }
+                ]
+            }
+        """.trimIndent())
+        cacheProductDetails(monthlyDetails)
+        cacheProductDetails(annualDetails)
+
+        val monthlyPurchase = createPurchase(
+            productId = PremiumProduct.MONTHLY.productId,
+            orderId = "GPA.1111-2222",
+            purchaseToken = "existing_monthly_purchase_token",
+            isAcknowledged = true,
+            purchaseState = Purchase.PurchaseState.PURCHASED
+        )
+        repository.processPurchases(listOf(monthlyPurchase))
+
+        val ent = repository.entitlement.value as PremiumEntitlement.Premium
+        assertEquals(PremiumProduct.MONTHLY, ent.product)
+        assertEquals("existing_monthly_purchase_token", repository.activeSubscriptionPurchaseToken)
+
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        fakeAdapter.launchBillingFlowResult = PlayBillingResult.newBuilder()
+            .setResponseCode(BillingClient.BillingResponseCode.USER_CANCELED)
+            .build()
+
+        repository.purchase(activity, PremiumProduct.ANNUAL)
+
+        assertNotNull(fakeAdapter.lastBillingFlowParams)
+        val updateParams = getSubscriptionUpdateParams(fakeAdapter.lastBillingFlowParams!!)
+        assertNotNull(updateParams)
+        val oldToken = getOldPurchaseToken(updateParams!!)
+        assertEquals("existing_monthly_purchase_token", oldToken)
+        assertEquals(BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.WITH_TIME_PRORATION, getReplacementMode(updateParams))
+    }
+
+    // 29. testScenarioG_annualToMonthly_attachesSubscriptionUpdateParams
+    @Test
+    fun testScenarioG_annualToMonthly_attachesSubscriptionUpdateParams() = runBlocking {
+        val monthlyDetails = createProductDetails("""
+            {
+                "productId": "com.andy.englishcoach.premium.monthly",
+                "type": "subs",
+                "title": "月繳方案",
+                "name": "Monthly",
+                "description": "Monthly access",
+                "subscriptionOfferDetails": [
+                    {
+                        "basePlanId": "monthly-plan",
+                        "offerIdToken": "monthly_token_111",
+                        "pricingPhases": [{"priceAmountMicros": 90000000, "priceCurrencyCode": "TWD", "formattedPrice": "NT$90", "billingPeriod": "P1M", "recurrenceMode": 1}]
+                    }
+                ]
+            }
+        """.trimIndent())
+        val annualDetails = createProductDetails("""
+            {
+                "productId": "com.andy.englishcoach.premium.annual",
+                "type": "subs",
+                "title": "年繳方案",
+                "name": "Annual",
+                "description": "Annual access",
+                "subscriptionOfferDetails": [
+                    {
+                        "basePlanId": "annual-plan",
+                        "offerIdToken": "annual_token_222",
+                        "pricingPhases": [{"priceAmountMicros": 690000000, "priceCurrencyCode": "TWD", "formattedPrice": "NT$690", "billingPeriod": "P1Y", "recurrenceMode": 1}]
+                    }
+                ]
+            }
+        """.trimIndent())
+        cacheProductDetails(monthlyDetails)
+        cacheProductDetails(annualDetails)
+
+        val annualPurchase = createPurchase(
+            productId = PremiumProduct.ANNUAL.productId,
+            orderId = "GPA.3333-4444",
+            purchaseToken = "existing_annual_purchase_token",
+            isAcknowledged = true,
+            purchaseState = Purchase.PurchaseState.PURCHASED
+        )
+        repository.processPurchases(listOf(annualPurchase))
+
+        val ent = repository.entitlement.value as PremiumEntitlement.Premium
+        assertEquals(PremiumProduct.ANNUAL, ent.product)
+        assertEquals("existing_annual_purchase_token", repository.activeSubscriptionPurchaseToken)
+
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        fakeAdapter.launchBillingFlowResult = PlayBillingResult.newBuilder()
+            .setResponseCode(BillingClient.BillingResponseCode.USER_CANCELED)
+            .build()
+
+        repository.purchase(activity, PremiumProduct.MONTHLY)
+
+        assertNotNull(fakeAdapter.lastBillingFlowParams)
+        val updateParams = getSubscriptionUpdateParams(fakeAdapter.lastBillingFlowParams!!)
+        assertNotNull(updateParams)
+        val oldToken = getOldPurchaseToken(updateParams!!)
+        assertEquals("existing_annual_purchase_token", oldToken)
+        assertEquals(BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED, getReplacementMode(updateParams))
+    }
+
+    // 30. testScenarioH_monthlyToLifetime_doesNotAttachSubscriptionUpdateParams
+    @Test
+    fun testScenarioH_monthlyToLifetime_doesNotAttachSubscriptionUpdateParams() = runBlocking {
+        val lifetimeDetails = createProductDetails("""
+            {
+                "productId": "com.andy.englishcoach.premium.lifetime",
+                "type": "inapp",
+                "title": "終身方案",
+                "name": "Lifetime",
+                "description": "Lifetime access",
+                "oneTimePurchaseOfferDetailsList": [
+                    {
+                        "purchaseOptionId": "lifetime",
+                        "offerIdToken": "lifetime_token_333",
+                        "formattedPrice": "NT$1,290",
+                        "priceCurrencyCode": "TWD",
+                        "priceAmountMicros": 1290000000
+                    }
+                ]
+            }
+        """.trimIndent())
+        cacheProductDetails(lifetimeDetails)
+
+        val monthlyPurchase = createPurchase(
+            productId = PremiumProduct.MONTHLY.productId,
+            orderId = "GPA.5555-6666",
+            purchaseToken = "existing_monthly_purchase_token",
+            isAcknowledged = true,
+            purchaseState = Purchase.PurchaseState.PURCHASED
+        )
+        repository.processPurchases(listOf(monthlyPurchase))
+
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        fakeAdapter.launchBillingFlowResult = PlayBillingResult.newBuilder()
+            .setResponseCode(BillingClient.BillingResponseCode.USER_CANCELED)
+            .build()
+
+        repository.purchase(activity, PremiumProduct.LIFETIME)
+
+        assertNotNull(fakeAdapter.lastBillingFlowParams)
+        val updateParams = getSubscriptionUpdateParams(fakeAdapter.lastBillingFlowParams!!)
+        val oldToken = updateParams?.let { getOldPurchaseToken(it) }
+        assertNull("Old purchase token must NOT be attached for INAPP Lifetime purchases", oldToken)
+
+        val lifetimePurchase = createPurchase(
+            productId = PremiumProduct.LIFETIME.productId,
+            orderId = "GPA.7777-8888",
+            purchaseToken = "lifetime_purchase_token",
+            isAcknowledged = true,
+            purchaseState = Purchase.PurchaseState.PURCHASED
+        )
+        repository.processPurchases(listOf(lifetimePurchase), targetProduct = PremiumProduct.LIFETIME)
+
+        val finalEnt = repository.entitlement.value as PremiumEntitlement.Premium
+        assertEquals(PremiumProduct.LIFETIME, finalEnt.product)
+        assertTrue(finalEnt.isLifetime)
+        assertNull(repository.activeSubscriptionPurchaseToken)
+    }
+
+    private fun getSubscriptionUpdateParams(params: BillingFlowParams): BillingFlowParams.SubscriptionUpdateParams? {
+        val field = BillingFlowParams::class.java.declaredFields.firstOrNull {
+            it.type == BillingFlowParams.SubscriptionUpdateParams::class.java
+        }?.apply { isAccessible = true }
+        return field?.get(params) as? BillingFlowParams.SubscriptionUpdateParams
+    }
+
+    private fun getOldPurchaseToken(updateParams: BillingFlowParams.SubscriptionUpdateParams): String? {
+        val field = BillingFlowParams.SubscriptionUpdateParams::class.java.declaredFields
+            .firstOrNull { it.type == String::class.java }?.apply { isAccessible = true }
+        return field?.get(updateParams) as? String
+    }
+
+    private fun getReplacementMode(updateParams: BillingFlowParams.SubscriptionUpdateParams): Int? {
+        val field = BillingFlowParams.SubscriptionUpdateParams::class.java.declaredFields
+            .firstOrNull { it.type == Int::class.javaPrimitiveType || it.type == java.lang.Integer.TYPE }?.apply { isAccessible = true }
+        return field?.getInt(updateParams)
     }
 
     private fun cacheProductDetails(details: ProductDetails) {

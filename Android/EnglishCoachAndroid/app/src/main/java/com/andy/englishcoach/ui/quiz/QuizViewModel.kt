@@ -23,7 +23,10 @@ import kotlinx.coroutines.withContext
  */
 class QuizViewModel(
     private val repository: QuizRepository,
-    private val ttsManager: TtsManager? = null
+    private val ttsManager: TtsManager? = null,
+    private val settingsPreferences: com.andy.englishcoach.data.preference.SettingsPreferences? = null,
+    private val entitlementProvider: com.andy.englishcoach.billing.PremiumEntitlementProvider = com.andy.englishcoach.billing.DefaultBillingRepository(),
+    private val preferences: com.andy.englishcoach.data.preference.DailyLearningPreferences? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuizUiState())
@@ -37,8 +40,25 @@ class QuizViewModel(
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             val selectedTarget = target ?: repository.getUserTargetLevel()
+            val isPremium = entitlementProvider.isPremium
+            val policy = com.andy.englishcoach.billing.DailyTargetPolicy.forIsPremium(isPremium)
+            val currentTarget = policy.coerceTarget(settingsPreferences?.getDailyTarget() ?: 10)
+            val effectiveLimit = if (currentTarget == com.andy.englishcoach.billing.DailyTargetPolicy.UNLIMITED_TARGET) {
+                com.andy.englishcoach.data.repository.DailyLearningRepository.UNLIMITED_BATCH_SIZE
+            } else {
+                currentTarget
+            }
+
+            val today = repository.getTodayDateString()
+            val practiceDate = preferences?.getDailyPracticeDate()
+            val todayCompleted = if (practiceDate == today) (preferences?.getDailyPracticeCount() ?: 0) else 0
+
             val questions = withContext(Dispatchers.IO) {
-                repository.generateQuiz(selectedTarget)
+                repository.generateQuizForSession(
+                    target = selectedTarget,
+                    totalTarget = effectiveLimit,
+                    offset = todayCompleted
+                )
             }
 
             _uiState.update {
@@ -138,11 +158,14 @@ class QuizViewModel(
 
     class Factory(
         private val repository: QuizRepository,
-        private val ttsManager: TtsManager? = null
+        private val ttsManager: TtsManager? = null,
+        private val settingsPreferences: com.andy.englishcoach.data.preference.SettingsPreferences? = null,
+        private val entitlementProvider: com.andy.englishcoach.billing.PremiumEntitlementProvider = com.andy.englishcoach.billing.DefaultBillingRepository(),
+        private val preferences: com.andy.englishcoach.data.preference.DailyLearningPreferences? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return QuizViewModel(repository, ttsManager) as T
+            return QuizViewModel(repository, ttsManager, settingsPreferences, entitlementProvider, preferences) as T
         }
     }
 }

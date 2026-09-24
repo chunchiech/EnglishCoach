@@ -1,6 +1,7 @@
 package com.andy.englishcoach.ui.settings
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.andy.englishcoach.billing.DailyTargetPolicy
 import com.andy.englishcoach.billing.DefaultBillingRepository
 import com.andy.englishcoach.billing.PremiumEntitlementProvider
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -34,6 +36,11 @@ class SettingsViewModel(
 
     init {
         refresh()
+        viewModelScope.launch {
+            entitlementProvider.entitlement.collect {
+                refresh()
+            }
+        }
     }
 
     fun refresh() {
@@ -45,7 +52,8 @@ class SettingsViewModel(
             todayStr,
             SharedPreferencesDailyLearningPreferences.DEFAULT_MAX_FREE_DAILY_QUESTIONS
         )
-        val isPremium = entitlementProvider.isPremium
+        val entitlement = entitlementProvider.entitlement.value
+        val isPremium = entitlement.isPremium
         val policy = DailyTargetPolicy.forIsPremium(isPremium)
         val currentDailyTarget = policy.coerceTarget(settingsPreferences.getDailyTarget())
         val scenariosText = onboardingPreferences?.getScenarioDisplayText()
@@ -67,6 +75,7 @@ class SettingsViewModel(
                 remainingFreeQuestions = remaining,
                 versionName = versionName,
                 isPremium = isPremium,
+                currentEntitlement = entitlement,
                 dailyTargetPolicy = policy,
                 learningScenariosText = scenariosText,
                 selectedScenarioIds = selectedScenarios,
@@ -83,6 +92,16 @@ class SettingsViewModel(
             return false
         }
         settingsPreferences.setDailyTarget(target)
+
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val savedDate = learningPreferences.getDailyPracticeDate()
+        val practiceCount = if (savedDate == todayStr) learningPreferences.getDailyPracticeCount() else 0
+
+        if (target == DailyTargetPolicy.UNLIMITED_TARGET || target > practiceCount) {
+            learningPreferences.setLearningCompletedDate("")
+            learningPreferences.setQuizCompletedDate("")
+        }
+
         refresh()
         return true
     }

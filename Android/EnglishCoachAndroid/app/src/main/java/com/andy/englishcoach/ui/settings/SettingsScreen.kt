@@ -145,13 +145,55 @@ fun SettingsScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 if (state.isPremium) {
-                    SettingsInfoRow(
-                        icon = EnglishCoachIcons.Star,
-                        iconTint = EnglishCoachColors.Orange,
-                        title = "會員狀態",
-                        value = "Premium 會員",
-                        valueColor = EnglishCoachColors.Purple
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onOpenPaywall)
+                            .padding(horizontal = EnglishCoachSpacing.cardPadding, vertical = EnglishCoachSpacing.md),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.sm)
+                        ) {
+                            Icon(
+                                imageVector = EnglishCoachIcons.Star,
+                                contentDescription = null,
+                                tint = EnglishCoachColors.Orange,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "會員狀態",
+                                    style = EnglishCoachTypography.bodyLarge,
+                                    color = EnglishCoachColors.TextPrimary
+                                )
+                                Text(
+                                    text = "Premium 會員",
+                                    style = EnglishCoachTypography.caption,
+                                    color = EnglishCoachColors.Purple
+                                )
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xs)
+                        ) {
+                            Text(
+                                text = "管理／變更方案",
+                                style = EnglishCoachTypography.secondary.copy(fontWeight = FontWeight.Medium),
+                                color = EnglishCoachColors.Purple
+                            )
+                            Icon(
+                                imageVector = EnglishCoachIcons.ChevronRight,
+                                contentDescription = "管理／變更方案",
+                                tint = EnglishCoachColors.TextSecondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 } else {
                     SettingsActionRow(
                         icon = EnglishCoachIcons.Star,

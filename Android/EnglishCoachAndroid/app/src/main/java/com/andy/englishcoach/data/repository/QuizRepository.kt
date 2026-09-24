@@ -58,14 +58,44 @@ class QuizRepository(
         randomSeed: Long? = null
     ): List<QuizQuestion> {
         val todayWords = dailyLearningRepository.getTodayWords(target, limit)
-        if (todayWords.isEmpty()) {
+        return generateQuizFromWords(target, todayWords, randomSeed)
+    }
+
+    /**
+     * Generates a quiz for a specific study session.
+     * Takes words starting at [offset] up to [totalTarget], allowing users who increased their
+     * daily learning target to take quiz on the newly assigned words.
+     */
+    fun generateQuizForSession(
+        target: ToeicTarget = getUserTargetLevel(),
+        totalTarget: Int = QUIZ_QUESTIONS_COUNT,
+        offset: Int = 0,
+        randomSeed: Long? = null
+    ): List<QuizQuestion> {
+        val allTodayWords = dailyLearningRepository.getTodayWords(target, totalTarget)
+        val sessionWords = if (offset > 0 && offset < allTodayWords.size) {
+            allTodayWords.drop(offset)
+        } else if (offset >= allTodayWords.size && allTodayWords.isNotEmpty()) {
+            allTodayWords
+        } else {
+            allTodayWords
+        }
+        return generateQuizFromWords(target, sessionWords, randomSeed)
+    }
+
+    private fun generateQuizFromWords(
+        target: ToeicTarget,
+        words: List<com.andy.englishcoach.data.model.Word>,
+        randomSeed: Long? = null
+    ): List<QuizQuestion> {
+        if (words.isEmpty()) {
             return emptyList()
         }
 
         val random = if (randomSeed != null) Random(randomSeed) else Random()
         val questions = mutableListOf<QuizQuestion>()
 
-        for ((index, word) in todayWords.withIndex()) {
+        for ((index, word) in words.withIndex()) {
             val correctOption = word.translation
 
             // Query distractors preferentially from the same target level
@@ -161,6 +191,7 @@ class QuizRepository(
             }
 
             markTodayQuizCompleted()
+            preferences.recordQuizQuestions(today, results.size)
             preferences.recordPracticeQuestions(today, results.size)
         }
 

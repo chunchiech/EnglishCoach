@@ -28,6 +28,7 @@ data class DashboardUiState(
     val accuracy: Double = 0.0,
     val reviewCount: Int = 0,
     val isPremium: Boolean = false,
+    val currentEntitlement: com.andy.englishcoach.billing.PremiumEntitlement = com.andy.englishcoach.billing.PremiumEntitlement.Free,
     val isLoading: Boolean = false,
     val dailyTarget: Int = 10,
     val showDailyTargetSheet: Boolean = false,

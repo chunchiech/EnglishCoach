@@ -29,6 +29,7 @@ class DailyLearningRepository(
 
     companion object {
         const val DEFAULT_DAILY_TARGET = 10
+        const val UNLIMITED_BATCH_SIZE = 50
         private val DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE
     }
 
@@ -66,6 +67,11 @@ class DailyLearningRepository(
         target: ToeicTarget = getUserTargetLevel(),
         limit: Int = DEFAULT_DAILY_TARGET
     ): List<Word> {
+        val resolvedLimit = if (limit <= 0 || limit == com.andy.englishcoach.billing.DailyTargetPolicy.UNLIMITED_TARGET) {
+            UNLIMITED_BATCH_SIZE
+        } else {
+            limit
+        }
         val today = getTodayDateString()
         val level = target.rawLevel
 
@@ -85,11 +91,11 @@ class DailyLearningRepository(
         }
 
         // If cached words are fewer than desired target count, select remaining from DB
-        if (words.size < limit) {
+        if (words.size < resolvedLimit) {
             val selectedIdSet = words.map { it.id }.toMutableSet()
 
             // Tier 1: Due Review (SM-2 Spaced Repetition) restricted strictly to targetLevel
-            val stillNeededForDue = limit - words.size
+            val stillNeededForDue = resolvedLimit - words.size
             val dueWords = database.vocabularyDao().getDueReviewWords(today, level)
                 .filter { it.id !in selectedIdSet }
 
@@ -100,8 +106,8 @@ class DailyLearningRepository(
             }
 
             // Tier 2: Unlearned Pool strictly restricted to targetLevel
-            if (words.size < limit) {
-                val remainingSlot = limit - words.size
+            if (words.size < resolvedLimit) {
+                val remainingSlot = resolvedLimit - words.size
                 val unlearnedCandidates = database.vocabularyDao().getUnlearnedWords(level)
                     .filter { it.id !in selectedIdSet }
 
@@ -119,8 +125,8 @@ class DailyLearningRepository(
             }
         }
 
-        if (words.size > limit) {
-            words = words.take(limit).toMutableList()
+        if (words.size > resolvedLimit) {
+            words = words.take(resolvedLimit).toMutableList()
         }
 
         return words.map { it.toWord() }

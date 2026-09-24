@@ -33,13 +33,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.andy.englishcoach.billing.BillingProductCatalog
 import com.andy.englishcoach.billing.BillingResult
+import com.andy.englishcoach.billing.PremiumEntitlement
 import com.andy.englishcoach.billing.PremiumProduct
 import com.andy.englishcoach.billing.PremiumProductInfo
 import com.andy.englishcoach.ui.theme.EnglishCoachColors
@@ -60,12 +63,26 @@ fun PaywallBottomSheet(
     onDismissRequest: () -> Unit,
     onPurchaseProduct: (PremiumProduct) -> Unit,
     onRestorePurchases: () -> Unit,
+    currentEntitlement: PremiumEntitlement = PremiumEntitlement.Free,
     statusMessage: String? = null,
     products: List<PremiumProductInfo> = emptyList(),
     catalog: BillingProductCatalog? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var selectedProduct by remember { mutableStateOf(PremiumProduct.ANNUAL) }
+
+    val currentProduct = (currentEntitlement as? PremiumEntitlement.Premium)?.product
+    val isPremiumUser = currentEntitlement.isPremium
+
+    var selectedProduct by remember(currentEntitlement) {
+        mutableStateOf(
+            when (currentProduct) {
+                PremiumProduct.LIFETIME -> PremiumProduct.LIFETIME
+                PremiumProduct.ANNUAL -> PremiumProduct.ANNUAL
+                PremiumProduct.MONTHLY -> PremiumProduct.MONTHLY
+                null -> PremiumProduct.ANNUAL
+            }
+        )
+    }
 
     val availableProducts = (catalog as? BillingProductCatalog.Available)?.products ?: products
     val localizedPrices = availableProducts.associate { it.product to it.displayPrice }
@@ -75,6 +92,15 @@ fun PaywallBottomSheet(
         catalog is BillingProductCatalog.Error -> "方案資訊暫時無法載入，請稍後再試"
         catalog is BillingProductCatalog.Empty -> "目前尚未開放正式購買，敬請期待正式上架"
         else -> null
+    }
+
+    val title = if (isPremiumUser) "管理會員方案" else "EnglishCoach Premium"
+    val subtitle = when {
+        !isPremiumUser -> "解鎖 3,600 單字庫與無限複習"
+        currentProduct == PremiumProduct.MONTHLY -> "目前使用月訂閱"
+        currentProduct == PremiumProduct.ANNUAL -> "目前使用年訂閱"
+        currentProduct == PremiumProduct.LIFETIME -> "已擁有終身尊榮會員"
+        else -> "檢視或管理您的會員方案權限"
     }
 
     ModalBottomSheet(
@@ -97,13 +123,16 @@ fun PaywallBottomSheet(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(EnglishCoachColors.Orange.copy(alpha = 0.15f)),
+                    .background(
+                        if (isPremiumUser) EnglishCoachColors.Purple.copy(alpha = 0.15f)
+                        else EnglishCoachColors.Orange.copy(alpha = 0.15f)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = EnglishCoachIcons.Crown,
                     contentDescription = "Premium Crown",
-                    tint = EnglishCoachColors.Orange,
+                    tint = if (isPremiumUser) EnglishCoachColors.Purple else EnglishCoachColors.Orange,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -113,12 +142,12 @@ fun PaywallBottomSheet(
                 verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xxs)
             ) {
                 Text(
-                    text = "EnglishCoach Premium",
+                    text = title,
                     style = EnglishCoachTypography.screenTitle,
                     color = EnglishCoachColors.TextPrimary
                 )
                 Text(
-                    text = "解鎖完整 3,600 多益單字庫與無限複習測驗",
+                    text = subtitle,
                     style = EnglishCoachTypography.caption,
                     color = EnglishCoachColors.TextSecondary,
                     textAlign = TextAlign.Center
@@ -163,34 +192,109 @@ fun PaywallBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.sm)
             ) {
+                val isAnnualCurrent = (currentProduct == PremiumProduct.ANNUAL)
+                val isAnnualDisabled = (currentProduct == PremiumProduct.LIFETIME)
+                val annualBadge = when {
+                    isAnnualCurrent -> "目前方案"
+                    isAnnualDisabled -> null
+                    else -> "7天免費"
+                }
+                val annualDisabledReason = if (isAnnualDisabled) "您已享有終身權益，無需訂閱" else null
+
                 PremiumTierCard(
                     product = PremiumProduct.ANNUAL,
                     displayPrice = localizedPrices[PremiumProduct.ANNUAL] ?: PremiumProduct.ANNUAL.displayPrice,
                     isSelected = selectedProduct == PremiumProduct.ANNUAL,
-                    isRecommended = true,
-                    onClick = { selectedProduct = PremiumProduct.ANNUAL }
+                    isCurrentPlan = isAnnualCurrent,
+                    isDisabled = isAnnualDisabled,
+                    disabledReason = annualDisabledReason,
+                    badgeText = annualBadge,
+                    onClick = {
+                        if (!isAnnualDisabled) {
+                            selectedProduct = PremiumProduct.ANNUAL
+                        }
+                    }
                 )
+
+                val isMonthlyCurrent = (currentProduct == PremiumProduct.MONTHLY)
+                val isMonthlyDisabled = (currentProduct == PremiumProduct.LIFETIME)
+                val monthlyBadge = if (isMonthlyCurrent) "目前方案" else null
+                val monthlyDisabledReason = if (isMonthlyDisabled) "您已享有終身權益，無需訂閱" else null
+
                 PremiumTierCard(
                     product = PremiumProduct.MONTHLY,
                     displayPrice = localizedPrices[PremiumProduct.MONTHLY] ?: PremiumProduct.MONTHLY.displayPrice,
                     isSelected = selectedProduct == PremiumProduct.MONTHLY,
-                    isRecommended = false,
-                    onClick = { selectedProduct = PremiumProduct.MONTHLY }
+                    isCurrentPlan = isMonthlyCurrent,
+                    isDisabled = isMonthlyDisabled,
+                    disabledReason = monthlyDisabledReason,
+                    badgeText = monthlyBadge,
+                    onClick = {
+                        if (!isMonthlyDisabled) {
+                            selectedProduct = PremiumProduct.MONTHLY
+                        }
+                    }
                 )
+
+                val isLifetimeCurrent = (currentProduct == PremiumProduct.LIFETIME)
+                val lifetimeBadge = if (isLifetimeCurrent) "目前方案" else "終身有效"
+
                 PremiumTierCard(
                     product = PremiumProduct.LIFETIME,
                     displayPrice = localizedPrices[PremiumProduct.LIFETIME] ?: PremiumProduct.LIFETIME.displayPrice,
                     isSelected = selectedProduct == PremiumProduct.LIFETIME,
-                    isRecommended = false,
-                    onClick = { selectedProduct = PremiumProduct.LIFETIME }
+                    isCurrentPlan = isLifetimeCurrent,
+                    isDisabled = false,
+                    badgeText = lifetimeBadge,
+                    onClick = {
+                        selectedProduct = PremiumProduct.LIFETIME
+                    }
                 )
             }
 
             // CTA Button
-            val ctaText = when (selectedProduct) {
-                PremiumProduct.ANNUAL -> "開始 7 天免費試用"
-                PremiumProduct.MONTHLY -> "立即開通月繳方案"
-                PremiumProduct.LIFETIME -> "立即解鎖終身尊榮"
+            val isCtaEnabled = when {
+                !isPremiumUser -> true
+                currentProduct == null -> true
+                currentProduct == PremiumProduct.LIFETIME -> false
+                selectedProduct == currentProduct -> false
+                else -> true
+            }
+
+            val ctaText = when {
+                !isPremiumUser -> when (selectedProduct) {
+                    PremiumProduct.ANNUAL -> "開始 7 天免費試用 ➜"
+                    PremiumProduct.MONTHLY -> "立即開通月繳方案"
+                    PremiumProduct.LIFETIME -> "立即解鎖終身尊榮"
+                }
+                currentProduct == PremiumProduct.LIFETIME -> "已擁有終身尊榮會員"
+                selectedProduct == currentProduct -> "目前生效方案"
+                currentProduct == PremiumProduct.MONTHLY && selectedProduct == PremiumProduct.ANNUAL -> "變更為年訂閱"
+                currentProduct == PremiumProduct.MONTHLY && selectedProduct == PremiumProduct.LIFETIME -> "升級為終身買斷"
+                currentProduct == PremiumProduct.ANNUAL && selectedProduct == PremiumProduct.MONTHLY -> "變更為月訂閱"
+                currentProduct == PremiumProduct.ANNUAL && selectedProduct == PremiumProduct.LIFETIME -> "升級為終身買斷"
+                else -> "變更方案"
+            }
+
+            // Notice when switching from Subscription to Lifetime
+            if (currentProduct != null && currentProduct.isSubscription && selectedProduct == PremiumProduct.LIFETIME) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(EnglishCoachShapes.card)
+                        .background(EnglishCoachColors.Orange.copy(alpha = 0.12f))
+                        .padding(EnglishCoachSpacing.sm)
+                ) {
+                    Text(
+                        text = "⚠️ 注意：購買終身方案（一次性買斷）不會自動取消既有的 Google Play 訂閱，購買後請自行至 Google Play「付款與訂閱」取消原訂閱之自動續約。",
+                        style = EnglishCoachTypography.caption.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = EnglishCoachColors.Orange,
+                        textAlign = TextAlign.Start
+                    )
+                }
             }
 
             Box(
@@ -198,8 +302,17 @@ fun PaywallBottomSheet(
                     .fillMaxWidth()
                     .height(52.dp)
                     .clip(EnglishCoachShapes.button)
-                    .background(EnglishCoachGradients.purpleBlue)
+                    .background(
+                        if (isCtaEnabled) EnglishCoachGradients.purpleBlue
+                        else Brush.linearGradient(
+                            listOf(
+                                EnglishCoachColors.CardBorder,
+                                EnglishCoachColors.CardBorder
+                            )
+                        )
+                    )
                     .clickable(
+                        enabled = isCtaEnabled,
                         role = Role.Button,
                         onClick = { onPurchaseProduct(selectedProduct) }
                     ),
@@ -208,7 +321,7 @@ fun PaywallBottomSheet(
                 Text(
                     text = ctaText,
                     style = EnglishCoachTypography.button,
-                    color = Color.White
+                    color = if (isCtaEnabled) Color.White else EnglishCoachColors.TextSecondary
                 )
             }
 
@@ -269,13 +382,25 @@ private fun PaywallFeatureRow(text: String) {
 private fun PremiumTierCard(
     product: PremiumProduct,
     isSelected: Boolean,
-    isRecommended: Boolean,
+    isCurrentPlan: Boolean = false,
+    isDisabled: Boolean = false,
+    disabledReason: String? = null,
+    badgeText: String? = null,
     onClick: () -> Unit,
     displayPrice: String = product.displayPrice
 ) {
-    val borderColor = if (isSelected) EnglishCoachColors.Purple else EnglishCoachColors.CardBorder
-    val borderWidth = if (isSelected) 2.dp else 1.dp
-    val bgColor = if (isSelected) EnglishCoachColors.Purple.copy(alpha = 0.06f) else EnglishCoachColors.Surface
+    val borderColor = when {
+        isSelected -> EnglishCoachColors.Purple
+        isCurrentPlan -> EnglishCoachColors.Green
+        else -> EnglishCoachColors.CardBorder
+    }
+    val borderWidth = if (isSelected || isCurrentPlan) 2.dp else 1.dp
+    val bgColor = when {
+        isDisabled -> EnglishCoachColors.Surface.copy(alpha = 0.6f)
+        isSelected -> EnglishCoachColors.Purple.copy(alpha = 0.06f)
+        isCurrentPlan -> EnglishCoachColors.Green.copy(alpha = 0.04f)
+        else -> EnglishCoachColors.Surface
+    }
 
     Box(
         modifier = Modifier
@@ -283,7 +408,7 @@ private fun PremiumTierCard(
             .clip(EnglishCoachShapes.card)
             .background(bgColor)
             .border(borderWidth, borderColor, EnglishCoachShapes.card)
-            .clickable(onClick = onClick)
+            .clickable(enabled = !isDisabled, onClick = onClick)
             .padding(EnglishCoachSpacing.md)
     ) {
         Row(
@@ -291,7 +416,10 @@ private fun PremiumTierCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xxs)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xxs)
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.xs)
@@ -299,42 +427,47 @@ private fun PremiumTierCard(
                     Text(
                         text = product.title,
                         style = EnglishCoachTypography.button,
-                        color = EnglishCoachColors.TextPrimary
+                        color = if (isDisabled) EnglishCoachColors.TextSecondary else EnglishCoachColors.TextPrimary
                     )
-                    if (isRecommended) {
+                    if (badgeText != null) {
+                        val badgeColor = if (isCurrentPlan) EnglishCoachColors.Green else EnglishCoachColors.Orange
                         Box(
                             modifier = Modifier
                                 .clip(EnglishCoachShapes.pill)
-                                .background(EnglishCoachColors.Orange.copy(alpha = 0.15f))
+                                .background(badgeColor.copy(alpha = 0.15f))
                                 .padding(horizontal = EnglishCoachSpacing.xs, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "7天免費",
+                                text = badgeText,
                                 style = EnglishCoachTypography.badge,
-                                color = EnglishCoachColors.Orange
+                                color = badgeColor
                             )
                         }
                     }
                 }
                 Text(
-                    text = product.description,
+                    text = if (isDisabled && !disabledReason.isNullOrBlank()) disabledReason else product.description,
                     style = EnglishCoachTypography.caption,
                     color = EnglishCoachColors.TextSecondary
                 )
             }
 
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = displayPrice,
-                    style = EnglishCoachTypography.sectionHeader,
-                    color = if (isSelected) EnglishCoachColors.Purple else EnglishCoachColors.TextPrimary
-                )
-                Text(
-                    text = " " + product.billingPeriod,
-                    style = EnglishCoachTypography.caption,
-                    color = EnglishCoachColors.TextSecondary,
-                    modifier = Modifier.padding(bottom = 2.dp)
-                )
+            Spacer(modifier = Modifier.width(EnglishCoachSpacing.sm))
+
+            if (!isDisabled) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = displayPrice,
+                        style = EnglishCoachTypography.sectionHeader,
+                        color = if (isSelected) EnglishCoachColors.Purple else EnglishCoachColors.TextPrimary
+                    )
+                    Text(
+                        text = " " + product.billingPeriod,
+                        style = EnglishCoachTypography.caption,
+                        color = EnglishCoachColors.TextSecondary,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
             }
         }
     }

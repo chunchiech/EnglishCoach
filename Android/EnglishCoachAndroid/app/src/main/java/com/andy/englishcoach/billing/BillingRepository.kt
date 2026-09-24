@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface BillingRepository : PremiumEntitlementProvider {
     val connectionState: StateFlow<BillingConnectionState>
     val catalogState: StateFlow<BillingProductCatalog>
+    val activeSubscriptionPurchaseToken: String? get() = null
     fun getProducts(): List<PremiumProductInfo>
     suspend fun refreshEntitlements(): PremiumEntitlement
     suspend fun purchase(product: PremiumProduct): BillingResult

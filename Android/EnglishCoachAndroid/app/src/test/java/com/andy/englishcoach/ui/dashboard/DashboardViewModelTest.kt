@@ -251,7 +251,7 @@ class DashboardViewModelTest {
         preferences.recordPracticeQuestions("2026-09-21", 5)
         var state = vm.calculateDashboardState()
 
-        assertEquals(0, state.todayQuizCompletedCount) // Daily Quiz not done
+        assertEquals(5, state.todayQuizCompletedCount) // 5 of 10 completed
         assertEquals(5, state.dailyPracticeQuotaUsed) // Practice quota consumed
         assertEquals(0.5f, state.todayProgress, 0.001f)
 
@@ -374,5 +374,191 @@ class DashboardViewModelTest {
 
         vm.setDailyTargetSheetVisible(false)
         assertFalse(vm.uiState.value.showDailyTargetSheet)
+    }
+
+    // ---------------------------------------------------------
+    // User Specified Scenarios: Tests 1 - 6
+    // ---------------------------------------------------------
+
+    @Test
+    fun test1_dailyGoal10_completed0() {
+        val vm = createViewModel(isPremium = false)
+        val state = vm.calculateDashboardState()
+
+        assertEquals(10, state.dailyTarget)
+        assertEquals(0, state.todayQuizCompletedCount)
+        assertEquals(0, state.dailyPracticeQuotaUsed)
+        assertFalse(state.isDailyLimitReached)
+        assertEquals("開始今日練習", state.ctaTitle)
+        assertEquals(DashboardCtaAction.START_LEARNING, state.ctaAction)
+    }
+
+    @Test
+    fun test2_dailyGoal10_completed10() {
+        learningRepo.markTodayLearningCompleted()
+        quizRepo.markTodayQuizCompleted()
+        preferences.recordPracticeQuestions("2026-09-21", 10)
+
+        val vm = createViewModel(isPremium = false)
+        val state = vm.calculateDashboardState()
+
+        assertEquals(10, state.dailyTarget)
+        assertEquals(10, state.todayQuizCompletedCount)
+        assertEquals(10, state.dailyPracticeQuotaUsed)
+        assertTrue(state.isDailyLimitReached)
+        assertEquals("🎉 今日學習已完成", state.ctaTitle)
+        assertEquals(DashboardCtaAction.COMPLETED, state.ctaAction)
+    }
+
+    @Test
+    fun test3_dailyGoal10_completed10_upgradePremium_dailyGoal20() {
+        // Step 1: User completed 10/10 as Free
+        learningRepo.markTodayLearningCompleted()
+        quizRepo.markTodayQuizCompleted()
+        preferences.recordPracticeQuestions("2026-09-21", 10)
+
+        // Step 2: User upgrades to Premium and changes dailyGoal to 20
+        val settingsPrefs = InMemorySettingsPreferences()
+        val fakeBilling = FakeBillingRepository()
+        fakeBilling.setEntitlementForTesting(PremiumEntitlement.Premium(PremiumProduct.ANNUAL))
+
+        val vm = DashboardViewModel(
+            learningRepository = learningRepo,
+            quizRepository = quizRepo,
+            reviewRepository = reviewRepo,
+            preferences = preferences,
+            database = db,
+            clock = fixedClock,
+            entitlementProvider = fakeBilling,
+            settingsPreferences = settingsPrefs
+        )
+
+        val selectResult = vm.selectDailyTarget(20)
+        assertTrue(selectResult)
+
+        val state = vm.calculateDashboardState()
+
+        // Requirements:
+        // todayCompleted = 10
+        // dailyGoal = 20
+        // remaining = 10
+        // UI displays: 10 / 20, can continue learning 10 words
+        assertEquals(20, state.dailyTarget)
+        assertEquals(10, state.todayQuizCompletedCount)
+        assertEquals(10, state.dailyPracticeQuotaUsed)
+        assertFalse(state.isDailyLimitReached)
+        assertEquals(0.5f, state.todayProgress, 0.001f)
+        assertEquals("繼續今日學習 ➜", state.ctaTitle)
+        assertEquals(DashboardCtaAction.START_LEARNING, state.ctaAction)
+    }
+
+    @Test
+    fun test4_dailyGoal20_completed10() {
+        preferences.recordPracticeQuestions("2026-09-21", 10)
+        val settingsPrefs = InMemorySettingsPreferences().apply { setDailyTarget(20) }
+
+        val vm = createViewModel(isPremium = true, settingsPrefs = settingsPrefs)
+        val state = vm.calculateDashboardState()
+
+        assertEquals(20, state.dailyTarget)
+        assertEquals(10, state.todayQuizCompletedCount)
+        assertEquals(10, state.dailyPracticeQuotaUsed)
+        assertFalse(state.isDailyLimitReached)
+        assertEquals("繼續今日學習 ➜", state.ctaTitle)
+        assertEquals(DashboardCtaAction.START_LEARNING, state.ctaAction)
+    }
+
+    @Test
+    fun test5_dailyGoal20_completed20() {
+        learningRepo.markTodayLearningCompleted()
+        quizRepo.markTodayQuizCompleted()
+        preferences.recordPracticeQuestions("2026-09-21", 20)
+        val settingsPrefs = InMemorySettingsPreferences().apply { setDailyTarget(20) }
+
+        val vm = createViewModel(isPremium = true, settingsPrefs = settingsPrefs)
+        val state = vm.calculateDashboardState()
+
+        assertEquals(20, state.dailyTarget)
+        assertEquals(20, state.todayQuizCompletedCount)
+        assertEquals(20, state.dailyPracticeQuotaUsed)
+        assertTrue(state.isDailyLimitReached)
+        assertEquals(1.0f, state.todayProgress, 0.001f)
+        assertEquals("🎉 今日學習已完成", state.ctaTitle)
+        assertEquals(DashboardCtaAction.COMPLETED, state.ctaAction)
+    }
+
+    @Test
+    fun test6_modifyDailyGoal_restartApp_statePreserved() {
+        // Step 1: User completed 10 questions today
+        preferences.recordPracticeQuestions("2026-09-21", 10)
+        val settingsPrefs = InMemorySettingsPreferences()
+        val fakeBilling = FakeBillingRepository()
+        fakeBilling.setEntitlementForTesting(PremiumEntitlement.Premium(PremiumProduct.ANNUAL))
+
+        var vm = DashboardViewModel(
+            learningRepository = learningRepo,
+            quizRepository = quizRepo,
+            reviewRepository = reviewRepo,
+            preferences = preferences,
+            database = db,
+            clock = fixedClock,
+            entitlementProvider = fakeBilling,
+            settingsPreferences = settingsPrefs
+        )
+        vm.selectDailyTarget(20)
+
+        // Step 2: Simulate App Restart with persisted preferences & DB
+        val restartedVm = DashboardViewModel(
+            learningRepository = learningRepo,
+            quizRepository = quizRepo,
+            reviewRepository = reviewRepo,
+            preferences = preferences,
+            database = db,
+            clock = fixedClock,
+            entitlementProvider = fakeBilling,
+            settingsPreferences = settingsPrefs
+        )
+        val state = restartedVm.calculateDashboardState()
+
+        assertEquals(20, state.dailyTarget)
+        assertEquals(10, state.todayQuizCompletedCount)
+        assertEquals(10, state.dailyPracticeQuotaUsed)
+        assertFalse(state.isDailyLimitReached)
+        assertEquals("繼續今日學習 ➜", state.ctaTitle)
+        assertEquals(DashboardCtaAction.START_LEARNING, state.ctaAction)
+    }
+
+    @Test
+    fun test7_learningCompleted10_quizNotCompleted_dashboardStateCompliesWithProductSpec() {
+        // Free user, target = 10, completes 10 learning cards
+        learningRepo.markTodayLearningCompleted()
+
+        // Quiz is NOT yet completed, no practice quota consumed yet
+        assertFalse(quizRepo.isTodayQuizCompleted())
+        assertEquals(0, preferences.getDailyPracticeCount())
+        assertEquals(0, preferences.getDailyQuizCount())
+
+        val vm = createViewModel()
+        val state = vm.calculateDashboardState()
+
+        // 1. Completed Counts
+        // Today quiz completed count must be 0 (user has not answered quiz questions yet)
+        assertEquals(0, state.todayQuizCompletedCount)
+        // Daily practice quota used must be 0 (browsing/learning cards does not consume quota)
+        assertEquals(0, state.dailyPracticeQuotaUsed)
+
+        // 2. Remaining Counts
+        val remainingFreeQuota = state.maxPracticeQuota - state.dailyPracticeQuotaUsed
+        assertEquals(10, remainingFreeQuota)
+        val remainingTargetQuestions = state.dailyTarget - state.todayQuizCompletedCount
+        assertEquals(10, remainingTargetQuestions)
+        assertFalse(state.isDailyLimitReached)
+
+        // 3. Status & CTA
+        assertTrue(state.isLearningCompleted)
+        assertFalse(state.isQuizCompleted)
+        assertEquals("開始今日測驗 ➜", state.ctaTitle)
+        assertEquals(DashboardCtaAction.START_QUIZ, state.ctaAction)
+        assertEquals(0f, state.todayProgress, 0.001f)
     }
 }

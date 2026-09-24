@@ -94,9 +94,16 @@ class MainActivity : ComponentActivity() {
             repository = learningRepository,
             ttsManager = ttsManager,
             settingsPreferences = settingsPreferences,
-            entitlementProvider = billing
+            entitlementProvider = billing,
+            preferences = preferences
         )
-        val quizViewModel = QuizViewModel(quizRepository, ttsManager)
+        val quizViewModel = QuizViewModel(
+            repository = quizRepository,
+            ttsManager = ttsManager,
+            settingsPreferences = settingsPreferences,
+            entitlementProvider = billing,
+            preferences = preferences
+        )
         val reviewViewModel = ReviewViewModel(
             reviewRepository = reviewRepository,
             ttsManager = ttsManager,
@@ -118,6 +125,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             EnglishCoachAndroidTheme {
                 val catalogState by billing.catalogState.collectAsState()
+                val currentEntitlement by billing.entitlement.collectAsState()
                 val initialScreen = if (onboardingPreferences.isOnboardingCompleted()) "dashboard" else "onboarding"
                 var currentScreen by remember { mutableStateOf(initialScreen) }
                 var showPaywall by remember { mutableStateOf(false) }
@@ -222,6 +230,9 @@ class MainActivity : ComponentActivity() {
 
                 if (showPaywall) {
                     PaywallBottomSheet(
+                        currentEntitlement = currentEntitlement,
+                        catalog = catalogState,
+                        statusMessage = paywallStatusMessage,
                         onDismissRequest = {
                             showPaywall = false
                             paywallStatusMessage = null
@@ -271,9 +282,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
-                        },
-                        statusMessage = paywallStatusMessage,
-                        catalog = catalogState
+                        }
                     )
                 }
             }

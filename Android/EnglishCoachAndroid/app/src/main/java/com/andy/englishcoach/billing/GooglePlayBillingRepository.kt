@@ -65,6 +65,21 @@ class GooglePlayBillingRepository(
     private val processedPurchaseTokens = Collections.synchronizedSet(mutableSetOf<String>())
     private val recordedPurchases = Collections.synchronizedList(mutableListOf<PurchaseRecord>())
 
+    private var _activeSubscriptionPurchaseToken: String? = null
+    override val activeSubscriptionPurchaseToken: String?
+        get() {
+            val current = _entitlement.value
+            if (current is PremiumEntitlement.Premium && current.product.isSubscription) {
+                return synchronized(recordedPurchases) {
+                    recordedPurchases.lastOrNull { record ->
+                        val p = PremiumProduct.entries.firstOrNull { it.productId == record.productId }
+                        p == current.product && record.purchaseState == Purchase.PurchaseState.PURCHASED
+                    }?.purchaseToken ?: _activeSubscriptionPurchaseToken
+                }
+            }
+            return null
+        }
+
     val records: List<PurchaseRecord>
         get() = synchronized(recordedPurchases) { recordedPurchases.toList() }
 
@@ -327,9 +342,35 @@ class GooglePlayBillingRepository(
             productDetailsParamsBuilder.setOfferToken(offerToken)
         }
 
-        val flowParams = BillingFlowParams.newBuilder()
+        val flowParamsBuilder = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productDetailsParamsBuilder.build()))
-            .build()
+
+        // Section: Subscription Replacement (Monthly <-> Annual)
+        if (product.isSubscription) {
+            val oldToken = activeSubscriptionPurchaseToken
+            val currentProduct = (_entitlement.value as? PremiumEntitlement.Premium)?.product
+            if (!oldToken.isNullOrBlank() && currentProduct != null && currentProduct.isSubscription && currentProduct != product) {
+                val replacementMode = when {
+                    currentProduct == PremiumProduct.MONTHLY && product == PremiumProduct.ANNUAL -> {
+                        BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.WITH_TIME_PRORATION
+                    }
+                    currentProduct == PremiumProduct.ANNUAL && product == PremiumProduct.MONTHLY -> {
+                        BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.DEFERRED
+                    }
+                    else -> {
+                        BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.WITH_TIME_PRORATION
+                    }
+                }
+                Log.i(TAG, "Configuring SubscriptionUpdateParams for replacement: from $currentProduct to $product (mode=$replacementMode, oldToken suffix: ${oldToken.takeLast(4)})")
+                val updateParams = BillingFlowParams.SubscriptionUpdateParams.newBuilder()
+                    .setOldPurchaseToken(oldToken)
+                    .setSubscriptionReplacementMode(replacementMode)
+                    .build()
+                flowParamsBuilder.setSubscriptionUpdateParams(updateParams)
+            }
+        }
+
+        val flowParams = flowParamsBuilder.build()
 
         val deferred = CompletableDeferred<BillingResult>()
         pendingPurchaseDeferred = deferred
@@ -448,6 +489,9 @@ class GooglePlayBillingRepository(
                     val matched = PremiumProduct.entries.firstOrNull { it.productId in purchase.products }
                     if (matched != null) {
                         grantedProducts.add(matched)
+                        if (matched.isSubscription) {
+                            _activeSubscriptionPurchaseToken = purchase.purchaseToken
+                        }
                     }
                 }
                 else -> {

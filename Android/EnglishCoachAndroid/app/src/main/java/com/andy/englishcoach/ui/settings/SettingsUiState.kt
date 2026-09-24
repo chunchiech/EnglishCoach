@@ -21,6 +21,7 @@ data class SettingsUiState(
     val availableEmojis: List<String> = SharedPreferencesSettingsPreferences.AVAILABLE_AVATAR_EMOJIS,
     val showEditProfileSheet: Boolean = false,
     val isPremium: Boolean = false,
+    val currentEntitlement: com.andy.englishcoach.billing.PremiumEntitlement = com.andy.englishcoach.billing.PremiumEntitlement.Free,
     val dailyTargetPolicy: DailyTargetPolicy = DailyTargetPolicy.Free,
     val availableDailyTargets: List<Int> = listOf(5, 10, 20, 30, 50, 100, DailyTargetPolicy.UNLIMITED_TARGET),
     val showDailyTargetSheet: Boolean = false,
