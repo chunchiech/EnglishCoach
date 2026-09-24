@@ -7,6 +7,7 @@ import android.net.Uri
 import com.andy.englishcoach.notification.DailyReminderScheduler
 import com.andy.englishcoach.onboarding.model.LearningScenario
 import com.andy.englishcoach.onboarding.model.ReminderTimeOption
+import com.andy.englishcoach.ui.components.DailyTargetBottomSheet
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -859,129 +860,6 @@ private fun ProfileEditBottomSheet(
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DailyTargetBottomSheet(
-    currentTarget: Int,
-    isPremium: Boolean,
-    availableTargets: List<Int>,
-    onDismiss: () -> Unit,
-    onSelectTarget: (Int) -> Unit,
-    onOpenPaywall: () -> Unit
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = EnglishCoachColors.Surface
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = EnglishCoachSpacing.screenHorizontal)
-                .padding(bottom = EnglishCoachSpacing.xxxl),
-            verticalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.md)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "每日學習目標",
-                    style = EnglishCoachTypography.sectionTitle,
-                    color = EnglishCoachColors.TextPrimary
-                )
-                TextButton(onClick = onDismiss) {
-                    Text(
-                        text = "關閉",
-                        color = EnglishCoachColors.Purple,
-                        style = EnglishCoachTypography.bodyLarge
-                    )
-                }
-            }
-
-            Text(
-                text = if (isPremium) "選擇每天練習的新單字數量" else "免費版固定每日 10 題，升級 Premium 解鎖自由調整",
-                style = EnglishCoachTypography.caption,
-                color = EnglishCoachColors.TextSecondary
-            )
-
-            HorizontalDivider(color = EnglishCoachColors.CardBorder)
-
-            availableTargets.forEach { target ->
-                val isSelected = currentTarget == target
-                val isUnlocked = isPremium || target == 10
-                val label = when (target) {
-                    DailyTargetPolicy.UNLIMITED_TARGET -> "無限制 (自選練習)"
-                    10 -> "10 題 / 天 (標準推薦)"
-                    else -> "$target 題 / 天"
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(EnglishCoachShapes.card)
-                        .clickable {
-                            if (isUnlocked) {
-                                onSelectTarget(target)
-                            } else {
-                                onOpenPaywall()
-                            }
-                        }
-                        .padding(horizontal = EnglishCoachSpacing.cardPadding, vertical = EnglishCoachSpacing.md),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(EnglishCoachSpacing.sm)
-                    ) {
-                        if (isSelected) {
-                            Icon(
-                                imageVector = EnglishCoachIcons.CheckCircle,
-                                contentDescription = "已選擇",
-                                tint = EnglishCoachColors.Purple,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .border(1.5.dp, EnglishCoachColors.CardBorder, CircleShape)
-                            )
-                        }
-
-                        Text(
-                            text = label,
-                            style = EnglishCoachTypography.bodyLarge.copy(
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            ),
-                            color = if (isUnlocked) EnglishCoachColors.TextPrimary else EnglishCoachColors.TextSecondary
-                        )
-                    }
-
-                    if (!isUnlocked) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(EnglishCoachColors.Orange.copy(alpha = 0.12f))
-                                .padding(horizontal = EnglishCoachSpacing.xs, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "PRO",
-                                style = EnglishCoachTypography.badge,
-                                color = EnglishCoachColors.Orange
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }

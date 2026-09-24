@@ -1,5 +1,6 @@
 package com.andy.englishcoach.ui.dashboard
 
+import com.andy.englishcoach.billing.DailyTargetPolicy
 import com.andy.englishcoach.data.model.ToeicTarget
 
 enum class DashboardCtaAction {
@@ -27,5 +28,12 @@ data class DashboardUiState(
     val accuracy: Double = 0.0,
     val reviewCount: Int = 0,
     val isPremium: Boolean = false,
-    val isLoading: Boolean = false
-)
+    val isLoading: Boolean = false,
+    val dailyTarget: Int = 10,
+    val showDailyTargetSheet: Boolean = false,
+    val availableDailyTargets: List<Int> = DailyTargetPolicy.Premium.allowedTargets
+) {
+    val isUnlimitedTarget: Boolean get() = dailyTarget == DailyTargetPolicy.UNLIMITED_TARGET
+    val dailyTargetText: String
+        get() = if (isUnlimitedTarget) "不限" else "${dailyTarget} 題"
+}

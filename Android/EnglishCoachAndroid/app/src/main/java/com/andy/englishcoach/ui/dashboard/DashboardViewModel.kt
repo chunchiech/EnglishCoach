@@ -2,9 +2,14 @@ package com.andy.englishcoach.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.andy.englishcoach.billing.DailyTargetPolicy
+import com.andy.englishcoach.billing.DefaultBillingRepository
+import com.andy.englishcoach.billing.PremiumEntitlementProvider
 import com.andy.englishcoach.data.database.EnglishCoachDatabase
 import com.andy.englishcoach.data.model.ToeicTarget
 import com.andy.englishcoach.data.preference.DailyLearningPreferences
+import com.andy.englishcoach.data.preference.InMemorySettingsPreferences
+import com.andy.englishcoach.data.preference.SettingsPreferences
 import com.andy.englishcoach.data.preference.SharedPreferencesDailyLearningPreferences
 import com.andy.englishcoach.data.repository.DailyLearningRepository
 import com.andy.englishcoach.data.repository.QuizRepository
@@ -13,10 +18,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.andy.englishcoach.billing.DefaultBillingRepository
-import com.andy.englishcoach.billing.PremiumEntitlementProvider
 import java.time.Clock
 import java.time.LocalTime
 
@@ -33,7 +37,8 @@ class DashboardViewModel(
     private val preferences: DailyLearningPreferences,
     private val database: EnglishCoachDatabase,
     private val clock: Clock = Clock.systemDefaultZone(),
-    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository()
+    private val entitlementProvider: PremiumEntitlementProvider = DefaultBillingRepository(),
+    private val settingsPreferences: SettingsPreferences = InMemorySettingsPreferences()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState(isLoading = true))
@@ -48,18 +53,37 @@ class DashboardViewModel(
         refresh()
     }
 
+    fun selectDailyTarget(target: Int): Boolean {
+        val isPremium = entitlementProvider.isPremium
+        val policy = DailyTargetPolicy.forIsPremium(isPremium)
+        if (!policy.isTargetAllowed(target)) {
+            return false
+        }
+        settingsPreferences.setDailyTarget(target)
+        refresh()
+        return true
+    }
+
+    fun setDailyTargetSheetVisible(visible: Boolean) {
+        _uiState.update { it.copy(showDailyTargetSheet = visible) }
+    }
+
     fun refresh() {
         viewModelScope.launch {
             val newState = withContext(Dispatchers.IO) {
                 calculateDashboardState()
             }
-            _uiState.value = newState
+            _uiState.update { current ->
+                newState.copy(showDailyTargetSheet = current.showDailyTargetSheet)
+            }
         }
     }
 
     fun refreshSync(): DashboardUiState {
         val newState = calculateDashboardState()
-        _uiState.value = newState
+        _uiState.update { current ->
+            newState.copy(showDailyTargetSheet = current.showDailyTargetSheet)
+        }
         return newState
     }
 
@@ -75,6 +99,12 @@ class DashboardViewModel(
             else -> "晚安"
         }
 
+        val isPremium = entitlementProvider.isPremium
+        val policy = DailyTargetPolicy.forIsPremium(isPremium)
+        val dailyTarget = policy.coerceTarget(settingsPreferences.getDailyTarget())
+        val isUnlimited = dailyTarget == DailyTargetPolicy.UNLIMITED_TARGET
+        val maxPracticeQuota = SharedPreferencesDailyLearningPreferences.DEFAULT_MAX_FREE_DAILY_QUESTIONS
+
         val isLearningCompleted = learningRepository.isTodayLearningCompleted()
         val isQuizCompleted = quizRepository.isTodayQuizCompleted()
         val todayWords = learningRepository.getTodayWords(target = target)
@@ -83,11 +113,25 @@ class DashboardViewModel(
         // Quota & Quiz counts
         val practiceDate = preferences.getDailyPracticeDate()
         val dailyPracticeQuotaUsed = if (practiceDate == today) preferences.getDailyPracticeCount() else 0
-        val maxPracticeQuota = SharedPreferencesDailyLearningPreferences.DEFAULT_MAX_FREE_DAILY_QUESTIONS
-        val isDailyLimitReached = dailyPracticeQuotaUsed >= maxPracticeQuota
+        val isDailyLimitReached = if (isPremium) {
+            if (isUnlimited) false else dailyPracticeQuotaUsed >= dailyTarget
+        } else {
+            dailyPracticeQuotaUsed >= maxPracticeQuota
+        }
 
-        val todayQuizCompletedCount = if (isQuizCompleted) 10 else 0
-        val todayProgress = (dailyPracticeQuotaUsed.toFloat() / maxPracticeQuota.toFloat()).coerceIn(0f, 1f)
+        val todayQuizCompletedCount = if (isQuizCompleted) {
+            if (isUnlimited) dailyPracticeQuotaUsed.coerceAtLeast(10) else dailyTarget
+        } else {
+            0
+        }
+
+        val maxQuizCount = if (isUnlimited) DailyTargetPolicy.UNLIMITED_TARGET else dailyTarget
+
+        val todayProgress = when {
+            isUnlimited -> if (dailyPracticeQuotaUsed > 0 || isQuizCompleted) 1f else 0f
+            dailyTarget > 0 -> (dailyPracticeQuotaUsed.toFloat() / dailyTarget.toFloat()).coerceIn(0f, 1f)
+            else -> 0f
+        }
 
         // Vocabulary & Progress Statistics
         val totalWords = database.vocabularyDao().countWordsByLevel(target.rawLevel)
@@ -138,7 +182,7 @@ class DashboardViewModel(
             targetLevel = target,
             todayProgress = todayProgress,
             todayQuizCompletedCount = todayQuizCompletedCount,
-            maxQuizCount = 10,
+            maxQuizCount = maxQuizCount,
             dailyPracticeQuotaUsed = dailyPracticeQuotaUsed,
             maxPracticeQuota = maxPracticeQuota,
             isDailyLimitReached = isDailyLimitReached,
@@ -150,8 +194,9 @@ class DashboardViewModel(
             totalWords = totalWords,
             accuracy = accuracy,
             reviewCount = reviewCount,
-            isPremium = entitlementProvider.isPremium,
-            isLoading = false
+            isPremium = isPremium,
+            isLoading = false,
+            dailyTarget = dailyTarget
         )
     }
 }

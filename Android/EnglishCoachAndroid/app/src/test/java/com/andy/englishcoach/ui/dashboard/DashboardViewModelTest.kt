@@ -11,6 +11,12 @@ import com.andy.englishcoach.data.preference.InMemoryDailyLearningPreferences
 import com.andy.englishcoach.data.repository.DailyLearningRepository
 import com.andy.englishcoach.data.repository.QuizRepository
 import com.andy.englishcoach.data.repository.ReviewRepository
+import com.andy.englishcoach.billing.DailyTargetPolicy
+import com.andy.englishcoach.billing.FakeBillingRepository
+import com.andy.englishcoach.billing.PremiumEntitlement
+import com.andy.englishcoach.billing.PremiumProduct
+import com.andy.englishcoach.data.preference.InMemorySettingsPreferences
+import com.andy.englishcoach.data.preference.SettingsPreferences
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -81,14 +87,23 @@ class DashboardViewModelTest {
         db.close()
     }
 
-    private fun createViewModel(): DashboardViewModel {
+    private fun createViewModel(
+        isPremium: Boolean = false,
+        settingsPrefs: SettingsPreferences = InMemorySettingsPreferences()
+    ): DashboardViewModel {
+        val fakeBilling = FakeBillingRepository()
+        if (isPremium) {
+            fakeBilling.setEntitlementForTesting(PremiumEntitlement.Premium(PremiumProduct.ANNUAL))
+        }
         return DashboardViewModel(
             learningRepository = learningRepo,
             quizRepository = quizRepo,
             reviewRepository = reviewRepo,
             preferences = preferences,
             database = db,
-            clock = fixedClock
+            clock = fixedClock,
+            entitlementProvider = fakeBilling,
+            settingsPreferences = settingsPrefs
         )
     }
 
@@ -281,5 +296,83 @@ class DashboardViewModelTest {
         // 8 / (8 + 2) = 80.0%
         assertEquals(80.0, state.accuracy, 0.01)
         assertEquals(1, state.learnedWords)
+    }
+
+    @Test
+    fun testK_dailyTarget_defaultsTo10_andReflectedInState() {
+        val vm = createViewModel()
+        val state = vm.calculateDashboardState()
+
+        assertEquals(10, state.dailyTarget)
+        assertEquals(10, state.maxQuizCount)
+        assertFalse(state.isUnlimitedTarget)
+        assertEquals("10 題", state.dailyTargetText)
+        assertEquals(listOf(5, 10, 20, 30, 50, 100, -1), state.availableDailyTargets)
+    }
+
+    @Test
+    fun testL_selectDailyTarget_whenPremium_updatesStateAndPreferences() {
+        val settingsPrefs = InMemorySettingsPreferences()
+        val vm = createViewModel(isPremium = true, settingsPrefs = settingsPrefs)
+
+        // 1. Select 20
+        val result20 = vm.selectDailyTarget(20)
+        assertTrue(result20)
+        var state = vm.calculateDashboardState()
+        assertEquals(20, state.dailyTarget)
+        assertEquals(20, state.maxQuizCount)
+        assertEquals("20 題", state.dailyTargetText)
+        assertEquals(20, settingsPrefs.getDailyTarget())
+
+        // 2. Select Unlimited (-1)
+        val resultUnlimited = vm.selectDailyTarget(DailyTargetPolicy.UNLIMITED_TARGET)
+        assertTrue(resultUnlimited)
+        state = vm.calculateDashboardState()
+        assertEquals(DailyTargetPolicy.UNLIMITED_TARGET, state.dailyTarget)
+        assertTrue(state.isUnlimitedTarget)
+        assertEquals("不限", state.dailyTargetText)
+        assertEquals(DailyTargetPolicy.UNLIMITED_TARGET, settingsPrefs.getDailyTarget())
+
+        // 3. Select 100
+        val result100 = vm.selectDailyTarget(100)
+        assertTrue(result100)
+        state = vm.calculateDashboardState()
+        assertEquals(100, state.dailyTarget)
+        assertEquals(100, state.maxQuizCount)
+        assertEquals("100 題", state.dailyTargetText)
+    }
+
+    @Test
+    fun testM_selectDailyTarget_whenFree_restrictsTo10() {
+        val settingsPrefs = InMemorySettingsPreferences()
+        val vm = createViewModel(isPremium = false, settingsPrefs = settingsPrefs)
+
+        // Disallowed targets return false and do not update
+        assertFalse(vm.selectDailyTarget(20))
+        assertEquals(10, settingsPrefs.getDailyTarget())
+
+        assertFalse(vm.selectDailyTarget(100))
+        assertEquals(10, settingsPrefs.getDailyTarget())
+
+        assertFalse(vm.selectDailyTarget(DailyTargetPolicy.UNLIMITED_TARGET))
+        assertEquals(10, settingsPrefs.getDailyTarget())
+
+        // 10 is allowed
+        assertTrue(vm.selectDailyTarget(10))
+        val state = vm.calculateDashboardState()
+        assertEquals(10, state.dailyTarget)
+        assertEquals(10, state.maxQuizCount)
+    }
+
+    @Test
+    fun testN_dailyTargetSheetVisibility_togglesCorrectly() {
+        val vm = createViewModel()
+        assertFalse(vm.uiState.value.showDailyTargetSheet)
+
+        vm.setDailyTargetSheetVisible(true)
+        assertTrue(vm.uiState.value.showDailyTargetSheet)
+
+        vm.setDailyTargetSheetVisible(false)
+        assertFalse(vm.uiState.value.showDailyTargetSheet)
     }
 }

@@ -80,7 +80,8 @@ class MainActivity : ComponentActivity() {
             reviewRepository = reviewRepository,
             preferences = preferences,
             database = database,
-            entitlementProvider = billing
+            entitlementProvider = billing,
+            settingsPreferences = settingsPreferences
         )
         val settingsViewModel = SettingsViewModel(
             settingsPreferences = settingsPreferences,

@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.andy.englishcoach.data.model.ToeicTarget
+import com.andy.englishcoach.ui.components.DailyTargetBottomSheet
 import com.andy.englishcoach.ui.components.ProgressRing
 import com.andy.englishcoach.ui.theme.EnglishCoachColors
 import com.andy.englishcoach.ui.theme.EnglishCoachGradients
@@ -104,6 +105,9 @@ fun DashboardScreen(
                             }
                         }
                     }
+                },
+                onAdjustDailyTargetClicked = {
+                    viewModel.setDailyTargetSheetVisible(true)
                 }
             )
 
@@ -120,6 +124,23 @@ fun DashboardScreen(
                 isPremium = state.isPremium,
                 onReviewCenterClicked = onNavigateToReview,
                 onPremiumClicked = onNavigateToPaywall
+            )
+        }
+
+        if (state.showDailyTargetSheet) {
+            DailyTargetBottomSheet(
+                currentTarget = state.dailyTarget,
+                isPremium = state.isPremium,
+                availableTargets = state.availableDailyTargets,
+                onDismiss = { viewModel.setDailyTargetSheetVisible(false) },
+                onSelectTarget = { target ->
+                    viewModel.selectDailyTarget(target)
+                    viewModel.setDailyTargetSheetVisible(false)
+                },
+                onOpenPaywall = {
+                    viewModel.setDailyTargetSheetVisible(false)
+                    onNavigateToPaywall()
+                }
             )
         }
     }
@@ -271,6 +292,7 @@ private fun TargetLevelSelector(
 private fun DailyPracticeHeroCard(
     state: DashboardUiState,
     onCtaClicked: () -> Unit,
+    onAdjustDailyTargetClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -297,7 +319,8 @@ private fun DailyPracticeHeroCard(
                 ProgressRing(
                     progress = state.todayProgress,
                     size = 110.dp,
-                    strokeWidth = 11.dp
+                    strokeWidth = 11.dp,
+                    centerText = if (state.isUnlimitedTarget) "∞" else null
                 )
 
                 // Practice & Quota Info
@@ -310,22 +333,59 @@ private fun DailyPracticeHeroCard(
                         color = EnglishCoachColors.TextPrimary
                     )
 
+                    val quizProgressText = if (state.isUnlimitedTarget) {
+                        "今日測驗：${state.todayQuizCompletedCount} 題"
+                    } else {
+                        "今日測驗：${state.todayQuizCompletedCount} / ${state.dailyTarget} 題"
+                    }
                     Text(
-                        text = "今日測驗：${state.todayQuizCompletedCount} / ${state.maxQuizCount} 題",
+                        text = quizProgressText,
                         style = EnglishCoachTypography.secondary.copy(
                             fontWeight = FontWeight.Bold
                         ),
                         color = EnglishCoachColors.Purple
                     )
 
-                    Text(
-                        text = "今日免費額度：${state.dailyPracticeQuotaUsed} / ${state.maxPracticeQuota} 題",
-                        style = EnglishCoachTypography.caption.copy(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = if (state.isDailyLimitReached) EnglishCoachColors.Orange else EnglishCoachColors.TextSecondary
-                    )
+                    val adjustTargetText = if (state.isUnlimitedTarget) {
+                        "⚙️ 調整每日學習量：不限"
+                    } else {
+                        "⚙️ 調整每日學習量：${state.dailyTarget} 題"
+                    }
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(EnglishCoachColors.Purple.copy(alpha = 0.1f))
+                            .clickable { onAdjustDailyTargetClicked() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = adjustTargetText,
+                            style = EnglishCoachTypography.caption.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = EnglishCoachColors.Purple
+                        )
+                        Icon(
+                            imageVector = EnglishCoachIcons.ChevronRight,
+                            contentDescription = "調整每日學習量",
+                            tint = EnglishCoachColors.Purple,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+
+                    if (!state.isPremium) {
+                        Text(
+                            text = "今日免費額度：${state.dailyPracticeQuotaUsed} / ${state.maxPracticeQuota} 題",
+                            style = EnglishCoachTypography.caption.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = if (state.isDailyLimitReached) EnglishCoachColors.Orange else EnglishCoachColors.TextSecondary
+                        )
+                    }
                 }
             }
 
