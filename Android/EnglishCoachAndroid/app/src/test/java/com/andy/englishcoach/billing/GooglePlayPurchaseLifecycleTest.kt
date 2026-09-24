@@ -8,6 +8,7 @@ import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult as PlayBillingResult
+import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.ProductDetailsResult
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesResult
@@ -21,6 +22,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 
 /**
@@ -476,6 +478,342 @@ class GooglePlayPurchaseLifecycleTest {
         assertEquals(PremiumEntitlement.Free, freshRepo.entitlement.value)
         assertFalse(freshRepo.isPremium)
     }
+
+    // 23. purchaseLifetime_setsOfferToken_whenPurchaseOptionPresent
+    @Test
+    fun purchaseLifetime_setsOfferToken_whenPurchaseOptionPresent() = runBlocking {
+        val json = """
+            {
+                "productId": "com.andy.englishcoach.premium.lifetime",
+                "type": "inapp",
+                "title": "終身方案",
+                "name": "Lifetime",
+                "description": "Lifetime access",
+                "oneTimePurchaseOfferDetailsList": [
+                    {
+                        "formattedPrice": "NT$1,290",
+                        "priceAmountMicros": 1290000000,
+                        "priceCurrencyCode": "TWD",
+                        "purchaseOptionId": "lifetime",
+                        "offerIdToken": "test_lifetime_offer_token_xyz"
+                    }
+                ]
+            }
+        """.trimIndent()
+        val details = createProductDetails(json)
+        cacheProductDetails(details)
+
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        fakeAdapter.launchBillingFlowResult = PlayBillingResult.newBuilder()
+            .setResponseCode(BillingClient.BillingResponseCode.USER_CANCELED)
+            .build()
+
+        val result = repository.purchase(activity, PremiumProduct.LIFETIME)
+        assertTrue(result is BillingResult.Cancelled)
+
+        val flowParams = fakeAdapter.lastBillingFlowParams
+        assertNotNull(flowParams)
+        val productDetailsParamsList = flowParams!!.zzk()
+        assertEquals(1, productDetailsParamsList.size)
+        val firstParams = productDetailsParamsList[0] as BillingFlowParams.ProductDetailsParams
+        assertEquals("test_lifetime_offer_token_xyz", firstParams.zzb())
+    }
+
+    // 24. purchaseLifetime_returnsError_whenOfferTokenMissing
+    @Test
+    fun purchaseLifetime_returnsError_whenOfferTokenMissing() = runBlocking {
+        val json = """
+            {
+                "productId": "com.andy.englishcoach.premium.lifetime",
+                "type": "inapp",
+                "title": "終身方案",
+                "name": "Lifetime",
+                "description": "Lifetime access",
+                "oneTimePurchaseOfferDetailsList": []
+            }
+        """.trimIndent()
+        val details = createProductDetails(json)
+        cacheProductDetails(details)
+
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val result = repository.purchase(activity, PremiumProduct.LIFETIME)
+        assertTrue(result is BillingResult.Error)
+        assertEquals("此方案目前無法購買", (result as BillingResult.Error).message)
+    }
+
+    // 25. refreshProductCatalog_queriesSubsAndInAppSeparately_noSameProductTypeException
+    @Test
+    fun refreshProductCatalog_queriesSubsAndInAppSeparately_noSameProductTypeException() = runBlocking {
+        fakeAdapter.queriedProductParams.clear()
+
+        val catalogResult = repository.refreshProductCatalog()
+
+        // Verify exactly 2 queries were executed: one for SUBS, one for INAPP
+        assertEquals(2, fakeAdapter.queriedProductParams.size)
+
+        val firstQuery = fakeAdapter.queriedProductParams[0]
+        val secondQuery = fakeAdapter.queriedProductParams[1]
+
+        // First query is SUBS only
+        assertEquals(BillingClient.ProductType.SUBS, firstQuery.zzb())
+        // Second query is INAPP only
+        assertEquals(BillingClient.ProductType.INAPP, secondQuery.zzb())
+
+        // Catalog is Empty since fakeAdapter returned emptyList() by default
+        assertTrue(catalogResult is BillingProductCatalog.Empty)
+    }
+
+    // 26. refreshProductCatalog_cachesMonthlyAnnualAndLifetime_andExposesCatalogAvailable
+    @Test
+    fun refreshProductCatalog_cachesMonthlyAnnualAndLifetime_andExposesCatalogAvailable() = runBlocking {
+        val monthlyJson = """
+            {
+                "productId": "com.andy.englishcoach.premium.monthly",
+                "type": "subs",
+                "title": "月繳方案",
+                "name": "Monthly",
+                "description": "Monthly access",
+                "subscriptionOfferDetails": [
+                    {
+                        "basePlanId": "monthly-plan",
+                        "offerId": null,
+                        "offerIdToken": "monthly_sub_offer_token_123",
+                        "pricingPhases": [
+                            {
+                                "priceAmountMicros": 150000000,
+                                "priceCurrencyCode": "TWD",
+                                "formattedPrice": "NT$150",
+                                "billingPeriod": "P1M",
+                                "recurrenceMode": 1
+                            }
+                        ]
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val annualJson = """
+            {
+                "productId": "com.andy.englishcoach.premium.annual",
+                "type": "subs",
+                "title": "年繳方案",
+                "name": "Annual",
+                "description": "Annual access",
+                "subscriptionOfferDetails": [
+                    {
+                        "basePlanId": "annual-plan",
+                        "offerId": "annual-trial",
+                        "offerIdToken": "annual_sub_offer_token_456",
+                        "pricingPhases": [
+                            {
+                                "priceAmountMicros": 0,
+                                "priceCurrencyCode": "TWD",
+                                "formattedPrice": "免費試用 7 天",
+                                "billingPeriod": "P7D",
+                                "recurrenceMode": 2
+                            },
+                            {
+                                "priceAmountMicros": 990000000,
+                                "priceCurrencyCode": "TWD",
+                                "formattedPrice": "NT$990",
+                                "billingPeriod": "P1Y",
+                                "recurrenceMode": 1
+                            }
+                        ]
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val lifetimeJson = """
+            {
+                "productId": "com.andy.englishcoach.premium.lifetime",
+                "type": "inapp",
+                "title": "終身方案",
+                "name": "Lifetime",
+                "description": "Lifetime access",
+                "oneTimePurchaseOfferDetailsList": [
+                    {
+                        "purchaseOptionId": "lifetime",
+                        "offerId": "lifetime-offer",
+                        "formattedPrice": "NT$1,290",
+                        "priceCurrencyCode": "TWD",
+                        "priceAmountMicros": 1290000000,
+                        "offerIdToken": "lifetime_one_time_token_789"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val monthlyDetails = createProductDetails(monthlyJson)
+        val annualDetails = createProductDetails(annualJson)
+        val lifetimeDetails = createProductDetails(lifetimeJson)
+
+        fakeAdapter.queryProductDetailsHandler = { params ->
+            val okResult = PlayBillingResult.newBuilder().setResponseCode(BillingClient.BillingResponseCode.OK).build()
+            when (params.zzb()) {
+                BillingClient.ProductType.SUBS -> ProductDetailsResult(okResult, listOf(monthlyDetails, annualDetails))
+                BillingClient.ProductType.INAPP -> ProductDetailsResult(okResult, listOf(lifetimeDetails))
+                else -> ProductDetailsResult(okResult, emptyList())
+            }
+        }
+
+        val catalogResult = repository.refreshProductCatalog()
+        assertTrue(catalogResult is BillingProductCatalog.Available)
+        val available = catalogResult as BillingProductCatalog.Available
+        assertEquals(3, available.products.size)
+
+        // Verify cache contains all three
+        val field = GooglePlayBillingRepository::class.java.getDeclaredField("productDetailsCache").apply {
+            isAccessible = true
+        }
+        @Suppress("UNCHECKED_CAST")
+        val cache = field.get(repository) as java.util.concurrent.ConcurrentHashMap<String, ProductDetails>
+        assertNotNull(cache[PremiumProduct.MONTHLY.productId])
+        assertNotNull(cache[PremiumProduct.ANNUAL.productId])
+        assertNotNull(cache[PremiumProduct.LIFETIME.productId])
+    }
+
+    // 27. purchase_allThreeTiers_usesCorrectOfferTokensAfterCatalogRefresh
+    @Test
+    fun purchase_allThreeTiers_usesCorrectOfferTokensAfterCatalogRefresh() = runBlocking {
+        val monthlyJson = """
+            {
+                "productId": "com.andy.englishcoach.premium.monthly",
+                "type": "subs",
+                "title": "月繳方案",
+                "name": "Monthly",
+                "description": "Monthly access",
+                "subscriptionOfferDetails": [
+                    {
+                        "basePlanId": "monthly-plan",
+                        "offerId": null,
+                        "offerIdToken": "monthly_sub_offer_token_123",
+                        "pricingPhases": [
+                            {
+                                "priceAmountMicros": 150000000,
+                                "priceCurrencyCode": "TWD",
+                                "formattedPrice": "NT$150",
+                                "billingPeriod": "P1M",
+                                "recurrenceMode": 1
+                            }
+                        ]
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val annualJson = """
+            {
+                "productId": "com.andy.englishcoach.premium.annual",
+                "type": "subs",
+                "title": "年繳方案",
+                "name": "Annual",
+                "description": "Annual access",
+                "subscriptionOfferDetails": [
+                    {
+                        "basePlanId": "annual-plan",
+                        "offerId": "annual-trial",
+                        "offerIdToken": "annual_sub_offer_token_456",
+                        "pricingPhases": [
+                            {
+                                "priceAmountMicros": 0,
+                                "priceCurrencyCode": "TWD",
+                                "formattedPrice": "免費試用 7 天",
+                                "billingPeriod": "P7D",
+                                "recurrenceMode": 2
+                            },
+                            {
+                                "priceAmountMicros": 990000000,
+                                "priceCurrencyCode": "TWD",
+                                "formattedPrice": "NT$990",
+                                "billingPeriod": "P1Y",
+                                "recurrenceMode": 1
+                            }
+                        ]
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val lifetimeJson = """
+            {
+                "productId": "com.andy.englishcoach.premium.lifetime",
+                "type": "inapp",
+                "title": "終身方案",
+                "name": "Lifetime",
+                "description": "Lifetime access",
+                "oneTimePurchaseOfferDetailsList": [
+                    {
+                        "purchaseOptionId": "lifetime",
+                        "offerId": "lifetime-offer",
+                        "formattedPrice": "NT$1,290",
+                        "priceCurrencyCode": "TWD",
+                        "priceAmountMicros": 1290000000,
+                        "offerIdToken": "lifetime_one_time_token_789"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val monthlyDetails = createProductDetails(monthlyJson)
+        val annualDetails = createProductDetails(annualJson)
+        val lifetimeDetails = createProductDetails(lifetimeJson)
+
+        fakeAdapter.queryProductDetailsHandler = { params ->
+            val okResult = PlayBillingResult.newBuilder().setResponseCode(BillingClient.BillingResponseCode.OK).build()
+            when (params.zzb()) {
+                BillingClient.ProductType.SUBS -> ProductDetailsResult(okResult, listOf(monthlyDetails, annualDetails))
+                BillingClient.ProductType.INAPP -> ProductDetailsResult(okResult, listOf(lifetimeDetails))
+                else -> ProductDetailsResult(okResult, emptyList())
+            }
+        }
+
+        // Refresh catalog first
+        repository.refreshProductCatalog()
+
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        fakeAdapter.launchBillingFlowResult = PlayBillingResult.newBuilder()
+            .setResponseCode(BillingClient.BillingResponseCode.USER_CANCELED)
+            .build()
+
+        // 1. Purchase Monthly
+        repository.purchase(activity, PremiumProduct.MONTHLY)
+        assertNotNull(fakeAdapter.lastBillingFlowParams)
+        var paramsList = fakeAdapter.lastBillingFlowParams!!.zzk()
+        var firstParams = paramsList[0] as BillingFlowParams.ProductDetailsParams
+        assertEquals("monthly_sub_offer_token_123", firstParams.zzb())
+
+        // 2. Purchase Annual (selects trial offerToken)
+        repository.purchase(activity, PremiumProduct.ANNUAL)
+        assertNotNull(fakeAdapter.lastBillingFlowParams)
+        paramsList = fakeAdapter.lastBillingFlowParams!!.zzk()
+        firstParams = paramsList[0] as BillingFlowParams.ProductDetailsParams
+        assertEquals("annual_sub_offer_token_456", firstParams.zzb())
+
+        // 3. Purchase Lifetime (selects lifetime one-time offerToken)
+        repository.purchase(activity, PremiumProduct.LIFETIME)
+        assertNotNull(fakeAdapter.lastBillingFlowParams)
+        paramsList = fakeAdapter.lastBillingFlowParams!!.zzk()
+        firstParams = paramsList[0] as BillingFlowParams.ProductDetailsParams
+        assertEquals("lifetime_one_time_token_789", firstParams.zzb())
+    }
+
+    private fun cacheProductDetails(details: ProductDetails) {
+        val field = GooglePlayBillingRepository::class.java.getDeclaredField("productDetailsCache").apply {
+            isAccessible = true
+        }
+        @Suppress("UNCHECKED_CAST")
+        val cache = field.get(repository) as java.util.concurrent.ConcurrentHashMap<String, ProductDetails>
+        cache[details.productId] = details
+    }
+
+    private fun createProductDetails(json: String): ProductDetails {
+        val constructor = ProductDetails::class.java.getDeclaredConstructor(String::class.java).apply {
+            isAccessible = true
+        }
+        return constructor.newInstance(json)
+    }
 }
 
 /**
@@ -491,9 +829,13 @@ class FakeBillingClientAdapter : BillingClientAdapter {
         .setResponseCode(BillingClient.BillingResponseCode.OK)
         .build()
 
+    var lastBillingFlowParams: BillingFlowParams? = null
     var mockSubsPurchases: List<Purchase> = emptyList()
     var mockInAppPurchases: List<Purchase> = emptyList()
     val acknowledgedTokens = mutableListOf<String>()
+
+    val queriedProductParams = mutableListOf<QueryProductDetailsParams>()
+    var queryProductDetailsHandler: ((QueryProductDetailsParams) -> ProductDetailsResult)? = null
 
     override fun startConnection(listener: BillingClientStateListener) {
         val res = PlayBillingResult.newBuilder()
@@ -507,6 +849,11 @@ class FakeBillingClientAdapter : BillingClientAdapter {
     }
 
     override suspend fun queryProductDetails(params: QueryProductDetailsParams): ProductDetailsResult {
+        queriedProductParams.add(params)
+        val handler = queryProductDetailsHandler
+        if (handler != null) {
+            return handler(params)
+        }
         return ProductDetailsResult(
             PlayBillingResult.newBuilder().setResponseCode(BillingClient.BillingResponseCode.OK).build(),
             emptyList()
@@ -525,6 +872,7 @@ class FakeBillingClientAdapter : BillingClientAdapter {
     }
 
     override fun launchBillingFlow(activity: Activity, params: BillingFlowParams): PlayBillingResult {
+        lastBillingFlowParams = params
         return launchBillingFlowResult
     }
 }

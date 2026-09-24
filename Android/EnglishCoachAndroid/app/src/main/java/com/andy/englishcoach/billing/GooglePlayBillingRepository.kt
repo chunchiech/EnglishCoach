@@ -2,6 +2,7 @@ package com.andy.englishcoach.billing
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
@@ -106,6 +107,7 @@ class GooglePlayBillingRepository(
         _connectionState.value = BillingConnectionState.Connecting
         clientAdapter.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(billingResult: PlayBillingResult) {
+                Log.i(TAG, "onBillingSetupFinished: code=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}'")
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     _connectionState.value = BillingConnectionState.Connected
                     scope.launch {
@@ -114,6 +116,7 @@ class GooglePlayBillingRepository(
                     }
                 } else {
                     val error = BillingError.fromBillingResponseCode(billingResult.responseCode)
+                    Log.e(TAG, "onBillingSetupFinished FAILED: code=${billingResult.responseCode}, error=$error, debugMessage='${billingResult.debugMessage}'")
                     _connectionState.value = BillingConnectionState.Unavailable(
                         billingResult.debugMessage.ifBlank { error.toUserFacingMessage() }
                     )
@@ -122,6 +125,7 @@ class GooglePlayBillingRepository(
             }
 
             override fun onBillingServiceDisconnected() {
+                Log.w(TAG, "onBillingServiceDisconnected")
                 _connectionState.value = BillingConnectionState.Disconnected
             }
         })
@@ -141,7 +145,8 @@ class GooglePlayBillingRepository(
 
         return withContext(Dispatchers.IO) {
             try {
-                val productList = listOf(
+                // Subscription products (MONTHLY, ANNUAL) must be queried with ProductType.SUBS
+                val subsProductList = listOf(
                     QueryProductDetailsParams.Product.newBuilder()
                         .setProductId(PremiumProduct.MONTHLY.productId)
                         .setProductType(BillingClient.ProductType.SUBS)
@@ -149,26 +154,71 @@ class GooglePlayBillingRepository(
                     QueryProductDetailsParams.Product.newBuilder()
                         .setProductId(PremiumProduct.ANNUAL.productId)
                         .setProductType(BillingClient.ProductType.SUBS)
-                        .build(),
+                        .build()
+                )
+
+                // One-time products (LIFETIME) must be queried separately with ProductType.INAPP
+                // (Google Play Billing Library requires all products in a query to have the same productType)
+                val inAppProductList = listOf(
                     QueryProductDetailsParams.Product.newBuilder()
                         .setProductId(PremiumProduct.LIFETIME.productId)
                         .setProductType(BillingClient.ProductType.INAPP)
                         .build()
                 )
 
-                val params = QueryProductDetailsParams.newBuilder()
-                    .setProductList(productList)
+                val subsParams = QueryProductDetailsParams.newBuilder()
+                    .setProductList(subsProductList)
                     .build()
 
-                val result = clientAdapter.queryProductDetails(params)
-                val responseCode = result.billingResult.responseCode
+                val inAppParams = QueryProductDetailsParams.newBuilder()
+                    .setProductList(inAppProductList)
+                    .build()
 
-                if (responseCode == BillingClient.BillingResponseCode.OK) {
-                    val rawDetailsList = result.productDetailsList.orEmpty()
+                val subsResult = clientAdapter.queryProductDetails(subsParams)
+                val subsCode = subsResult.billingResult.responseCode
+                Log.i(TAG, "queryProductDetails (SUBS) responseCode=$subsCode, debugMessage='${subsResult.billingResult.debugMessage}', count=${subsResult.productDetailsList?.size ?: 0}")
+
+                val inAppResult = clientAdapter.queryProductDetails(inAppParams)
+                val inAppCode = inAppResult.billingResult.responseCode
+                Log.i(TAG, "queryProductDetails (INAPP) responseCode=$inAppCode, debugMessage='${inAppResult.billingResult.debugMessage}', count=${inAppResult.productDetailsList?.size ?: 0}")
+
+                val isAnyOk = subsCode == BillingClient.BillingResponseCode.OK || inAppCode == BillingClient.BillingResponseCode.OK
+                if (isAnyOk) {
+                    val rawDetailsList = subsResult.productDetailsList.orEmpty() + inAppResult.productDetailsList.orEmpty()
+                    rawDetailsList.forEach { details ->
+                        Log.i(TAG, "  [ProductDetails] id=${details.productId}, type=${details.productType}, title='${details.title}'")
+                        details.subscriptionOfferDetails?.forEach { subOffer ->
+                            Log.i(TAG, "    SubOffer: offerId=${subOffer.offerId}, basePlanId=${subOffer.basePlanId}, tokenSuffix=${subOffer.offerToken.takeLast(4)}")
+                        }
+                        val oneTime = details.oneTimePurchaseOfferDetails
+                        if (oneTime != null) {
+                            Log.i(TAG, "    OneTimeOffer: price=${oneTime.formattedPrice}, currency=${oneTime.priceCurrencyCode}, optionId=${oneTime.purchaseOptionId}, offerId=${oneTime.offerId}, tokenSuffix=${oneTime.offerToken?.takeLast(4)}")
+                        }
+                        details.oneTimePurchaseOfferDetailsList?.forEach { item ->
+                            Log.i(TAG, "    OneTimeOfferListItem: price=${item.formattedPrice}, optionId=${item.purchaseOptionId}, offerId=${item.offerId}, tokenSuffix=${item.offerToken?.takeLast(4)}")
+                        }
+                    }
+
                     if (rawDetailsList.isEmpty()) {
-                        val empty = BillingProductCatalog.Empty
-                        _catalogState.value = empty
-                        empty
+                        if (subsCode != BillingClient.BillingResponseCode.OK) {
+                            val error = BillingProductCatalog.Error(
+                                BillingError.fromBillingResponseCode(subsCode),
+                                subsResult.billingResult.debugMessage
+                            )
+                            _catalogState.value = error
+                            error
+                        } else if (inAppCode != BillingClient.BillingResponseCode.OK) {
+                            val error = BillingProductCatalog.Error(
+                                BillingError.fromBillingResponseCode(inAppCode),
+                                inAppResult.billingResult.debugMessage
+                            )
+                            _catalogState.value = error
+                            error
+                        } else {
+                            val empty = BillingProductCatalog.Empty
+                            _catalogState.value = empty
+                            empty
+                        }
                     } else {
                         rawDetailsList.forEach { details ->
                             productDetailsCache[details.productId] = details
@@ -185,14 +235,16 @@ class GooglePlayBillingRepository(
                         available
                     }
                 } else {
+                    Log.e(TAG, "queryProductDetails FAILED: SUBS responseCode=$subsCode, debugMessage='${subsResult.billingResult.debugMessage}'; INAPP responseCode=$inAppCode, debugMessage='${inAppResult.billingResult.debugMessage}'")
                     val error = BillingProductCatalog.Error(
-                        BillingError.fromBillingResponseCode(responseCode),
-                        result.billingResult.debugMessage
+                        BillingError.fromBillingResponseCode(subsCode),
+                        subsResult.billingResult.debugMessage
                     )
                     _catalogState.value = error
                     error
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "refreshProductCatalog exception: ${e.message}", e)
                 val error = BillingProductCatalog.Error(BillingError.UNKNOWN, e.message ?: "Unknown error")
                 _catalogState.value = error
                 error
@@ -217,17 +269,21 @@ class GooglePlayBillingRepository(
      * Explicit overload allowing callers to provide the current hosting [Activity].
      */
     suspend fun purchase(activity: Activity, product: PremiumProduct): BillingResult {
+        Log.i(TAG, "purchase() requested for ${product.productId} (isSubscription=${product.isSubscription})")
         if (!clientAdapter.isReady) {
+            Log.w(TAG, "purchase() failed: BillingClient is not ready")
             return BillingResult.Error("目前無法使用 Google Play 付款服務")
         }
 
         var productDetails = productDetailsCache[product.productId]
         if (productDetails == null) {
+            Log.i(TAG, "ProductDetails not in cache for ${product.productId}, refreshing catalog...")
             refreshProductCatalog()
             productDetails = productDetailsCache[product.productId]
         }
 
         if (productDetails == null) {
+            Log.e(TAG, "purchase() failed: ProductDetails is NULL after refresh for ${product.productId}")
             return BillingResult.Error("此方案目前無法購買")
         }
 
@@ -247,12 +303,29 @@ class GooglePlayBillingRepository(
                 offers.firstOrNull()?.offerToken
             }
 
+            Log.i(TAG, "Subscription offerToken selected for ${product.productId}: offerTokenPresent=${!offerToken.isNullOrBlank()}, suffix=${offerToken?.takeLast(4)}")
             if (offerToken.isNullOrBlank()) {
+                Log.e(TAG, "Subscription offerToken is null or blank for ${product.productId}!")
+                return BillingResult.Error("此方案目前無法購買")
+            }
+            productDetailsParamsBuilder.setOfferToken(offerToken)
+        } else {
+            // One-time products (Lifetime)
+            // In Google Play Billing Library 8 & 9, one-time products use Purchase Options and require an offerToken
+            val oneTimeOffers = productDetails.oneTimePurchaseOfferDetailsList.orEmpty()
+            val selectedOffer = oneTimeOffers.firstOrNull { it.purchaseOptionId == "lifetime" }
+                ?: oneTimeOffers.firstOrNull()
+                ?: productDetails.oneTimePurchaseOfferDetails
+
+            val offerToken = selectedOffer?.offerToken
+            Log.i(TAG, "One-time offer selected for ${product.productId}: purchaseOptionId=${selectedOffer?.purchaseOptionId}, offerTokenPresent=${!offerToken.isNullOrBlank()}, suffix=${offerToken?.takeLast(4)}")
+
+            if (offerToken.isNullOrBlank()) {
+                Log.e(TAG, "One-time offerToken is null or blank for ${product.productId}!")
                 return BillingResult.Error("此方案目前無法購買")
             }
             productDetailsParamsBuilder.setOfferToken(offerToken)
         }
-        // One-time products (Lifetime) must not set an offerToken
 
         val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productDetailsParamsBuilder.build()))
@@ -262,14 +335,17 @@ class GooglePlayBillingRepository(
         pendingPurchaseDeferred = deferred
         pendingTargetProduct = product
 
+        Log.i(TAG, "Calling launchBillingFlow for ${product.productId}...")
         val launchResult = clientAdapter.launchBillingFlow(activity, flowParams)
+        Log.i(TAG, "launchBillingFlow returned: responseCode=${launchResult.responseCode}, debugMessage='${launchResult.debugMessage}'")
         if (launchResult.responseCode != BillingClient.BillingResponseCode.OK) {
             pendingPurchaseDeferred = null
             pendingTargetProduct = null
+            val error = BillingError.fromBillingResponseCode(launchResult.responseCode)
+            Log.e(TAG, "launchBillingFlow FAILED: responseCode=${launchResult.responseCode} ($error), debugMessage='${launchResult.debugMessage}', userFacingMessage='${error.toUserFacingMessage()}'")
             return when (launchResult.responseCode) {
                 BillingClient.BillingResponseCode.USER_CANCELED -> BillingResult.Cancelled("已取消購買")
                 else -> {
-                    val error = BillingError.fromBillingResponseCode(launchResult.responseCode)
                     BillingResult.Error(error.toUserFacingMessage())
                 }
             }
@@ -290,6 +366,7 @@ class GooglePlayBillingRepository(
      * Handles Google Play purchase updates delivered to [PurchasesUpdatedListener].
      */
     fun handlePurchasesUpdated(billingResult: PlayBillingResult, purchases: List<Purchase>?) {
+        Log.i(TAG, "handlePurchasesUpdated: responseCode=${billingResult.responseCode}, debugMessage='${billingResult.debugMessage}', purchasesCount=${purchases?.size ?: 0}")
         val deferred = pendingPurchaseDeferred
         pendingPurchaseDeferred = null
         val targetProduct = pendingTargetProduct
@@ -490,5 +567,9 @@ class GooglePlayBillingRepository(
             clientAdapter.endConnection()
         }
         _connectionState.value = BillingConnectionState.Disconnected
+    }
+
+    companion object {
+        private const val TAG = "EnglishCoachBilling"
     }
 }
