@@ -429,4 +429,118 @@ class OnboardingArchitectureTest {
         assertEquals("toeic_gold", learningPrefs.getUserLevel())
         assertEquals(ToeicTarget.GOLD, learningRepository.getUserTargetLevel())
     }
+
+    // =========================================================================
+    // 7. Backup Isolation & Onboarding Preference Exemption Tests
+    // =========================================================================
+
+    @Test
+    fun test21_caseA_freshInstall_preferenceMissing_initialScreenOnboarding() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val generalPrefs = appContext.getSharedPreferences("test_general_caseA", Context.MODE_PRIVATE)
+        val onboardingPrefs = appContext.getSharedPreferences("test_onboarding_caseA", Context.MODE_PRIVATE)
+        generalPrefs.edit().clear().commit()
+        onboardingPrefs.edit().clear().commit()
+
+        val preferences = SharedPreferencesOnboardingPreferences(
+            prefs = generalPrefs,
+            onboardingPrefs = onboardingPrefs
+        )
+
+        // Case A verification:
+        assertFalse("When onboarding preference does not exist, isOnboardingCompleted must be false", preferences.isOnboardingCompleted())
+        val initialScreen = if (preferences.isOnboardingCompleted()) "dashboard" else "onboarding"
+        assertEquals("When isOnboardingCompleted is false, initialScreen must be 'onboarding'", "onboarding", initialScreen)
+    }
+
+    @Test
+    fun test22_caseB_completedOnboarding_initialScreenDashboard() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val generalPrefs = appContext.getSharedPreferences("test_general_caseB", Context.MODE_PRIVATE)
+        val onboardingPrefs = appContext.getSharedPreferences("test_onboarding_caseB", Context.MODE_PRIVATE)
+        generalPrefs.edit().clear().commit()
+        onboardingPrefs.edit().clear().commit()
+
+        val preferences = SharedPreferencesOnboardingPreferences(
+            prefs = generalPrefs,
+            onboardingPrefs = onboardingPrefs
+        )
+
+        preferences.setOnboardingCompleted(true)
+
+        // Case B verification:
+        assertTrue("When onboarding is completed, isOnboardingCompleted must be true", preferences.isOnboardingCompleted())
+        val initialScreen = if (preferences.isOnboardingCompleted()) "dashboard" else "onboarding"
+        assertEquals("When isOnboardingCompleted is true, initialScreen must be 'dashboard'", "dashboard", initialScreen)
+    }
+
+    @Test
+    fun test23_caseC_simulateGoogleBackupRestore_generalPreferencesRestored_onboardingNotRestored() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val generalPrefs = appContext.getSharedPreferences(SharedPreferencesOnboardingPreferences.PREFS_NAME, Context.MODE_PRIVATE)
+        val onboardingPrefs = appContext.getSharedPreferences(SharedPreferencesOnboardingPreferences.ONBOARDING_PREFS_NAME, Context.MODE_PRIVATE)
+
+        // Simulate state before fresh install:
+        // Google Backup restores general preferences (e.g. englishcoach_preferences.xml with user settings & old legacy key)
+        generalPrefs.edit()
+            .putString("user_display_name", "Andy")
+            .putInt("daily_learning_target", 20)
+            .putInt(SharedPreferencesOnboardingPreferences.KEY_REMINDER_HOUR, 21)
+            .putBoolean("hasCompletedPersonalizedOnboarding", true) // Legacy key from old backup
+            .commit()
+
+        // But onboardingPrefs (englishcoach_onboarding_preferences.xml) was excluded from backup, so it is NOT restored (empty).
+        onboardingPrefs.edit().clear().commit()
+
+        // Instantiate using standard production factory
+        val preferences = SharedPreferencesOnboardingPreferences.create(appContext)
+
+        // Case C verification:
+        assertFalse("Onboarding completion state must NOT be restored from general preferences", preferences.isOnboardingCompleted())
+        val initialScreen = if (preferences.isOnboardingCompleted()) "dashboard" else "onboarding"
+        assertEquals("Fresh install after cloud restore must still show onboarding", "onboarding", initialScreen)
+
+        // General settings must still be preserved
+        assertEquals(21, preferences.getReminderHour())
+        assertEquals("Andy", generalPrefs.getString("user_display_name", null))
+        assertEquals(20, generalPrefs.getInt("daily_learning_target", 0))
+
+        // Legacy key must have been sanitized from generalPrefs
+        assertFalse("Legacy onboarding completion key must be stripped from generalPrefs", generalPrefs.contains("hasCompletedPersonalizedOnboarding"))
+    }
+
+    @Test
+    fun test24_backupExclusionRulesXml_verifiesExclusionOfOnboardingPreferencesFile() {
+        val rootDir = java.io.File(".").canonicalFile
+        val candidatePaths = listOf(
+            java.io.File(rootDir, "src/main/res/xml"),
+            java.io.File(rootDir, "app/src/main/res/xml"),
+            java.io.File(rootDir, "Android/EnglishCoachAndroid/app/src/main/res/xml")
+        )
+        val xmlDir = candidatePaths.firstOrNull { it.exists() }
+            ?: throw IllegalStateException("Cannot find res/xml in candidate paths: $candidatePaths")
+
+        val dataExtractionRulesFile = java.io.File(xmlDir, "data_extraction_rules.xml")
+        val backupRulesFile = java.io.File(xmlDir, "backup_rules.xml")
+
+        assertTrue("data_extraction_rules.xml must exist", dataExtractionRulesFile.exists())
+        assertTrue("backup_rules.xml must exist", backupRulesFile.exists())
+
+        val dataExtractionContent = dataExtractionRulesFile.readText()
+        val backupRulesContent = backupRulesFile.readText()
+
+        // Verify Android 12+ cloud-backup and device-transfer exclusion
+        assertTrue(
+            "data_extraction_rules.xml must exclude onboarding preferences in cloud-backup",
+            dataExtractionContent.contains("""<exclude domain="sharedpref" path="englishcoach_onboarding_preferences.xml" />""") ||
+            dataExtractionContent.contains("""<exclude domain="sharedpref" path="englishcoach_onboarding_preferences.xml"/>""")
+        )
+
+        // Verify Android <31 full-backup-content exclusion
+        assertTrue(
+            "backup_rules.xml must exclude onboarding preferences",
+            backupRulesContent.contains("""<exclude domain="sharedpref" path="englishcoach_onboarding_preferences.xml" />""") ||
+            backupRulesContent.contains("""<exclude domain="sharedpref" path="englishcoach_onboarding_preferences.xml"/>""")
+        )
+    }
 }

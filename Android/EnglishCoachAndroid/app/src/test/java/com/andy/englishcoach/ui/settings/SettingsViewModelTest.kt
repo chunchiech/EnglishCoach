@@ -44,7 +44,6 @@ class SettingsViewModelTest {
 
         assertEquals("英語學習者", state.displayName)
         assertEquals("🐶", state.avatarEmoji)
-        assertTrue(state.autoReadEnabled)
         assertTrue(state.hapticFeedbackEnabled)
         assertEquals(ToeicTarget.BASIC, state.targetLevel)
         assertEquals(10, state.dailyTarget)
@@ -75,18 +74,6 @@ class SettingsViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("英語學習者", state.displayName)
         assertEquals("🚀", state.avatarEmoji)
-    }
-
-    @Test
-    fun toggleAutoRead_persistsState() {
-        viewModel.setAutoReadEnabled(false)
-
-        assertFalse(viewModel.uiState.value.autoReadEnabled)
-        assertFalse(settingsPrefs.isAutoReadEnabled())
-
-        viewModel.setAutoReadEnabled(true)
-        assertTrue(viewModel.uiState.value.autoReadEnabled)
-        assertTrue(settingsPrefs.isAutoReadEnabled())
     }
 
     @Test
@@ -149,12 +136,10 @@ class SettingsViewModelTest {
         val inMem = InMemorySettingsPreferences()
         inMem.setDisplayName("Alice")
         inMem.setAvatarEmoji("🎓")
-        inMem.setAutoReadEnabled(false)
         inMem.setHapticFeedbackEnabled(false)
 
         assertEquals("Alice", inMem.getDisplayName())
         assertEquals("🎓", inMem.getAvatarEmoji())
-        assertFalse(inMem.isAutoReadEnabled())
         assertFalse(inMem.isHapticFeedbackEnabled())
     }
 
@@ -163,14 +148,12 @@ class SettingsViewModelTest {
         val realPrefs = SharedPreferencesSettingsPreferences.create(context)
         realPrefs.setDisplayName("Test User")
         realPrefs.setAvatarEmoji("🐻")
-        realPrefs.setAutoReadEnabled(false)
         realPrefs.setHapticFeedbackEnabled(false)
 
         // Create a new instance pointing to same shared preferences
         val reloadedPrefs = SharedPreferencesSettingsPreferences.create(context)
         assertEquals("Test User", reloadedPrefs.getDisplayName())
         assertEquals("🐻", reloadedPrefs.getAvatarEmoji())
-        assertFalse(reloadedPrefs.isAutoReadEnabled())
         assertFalse(reloadedPrefs.isHapticFeedbackEnabled())
     }
 }

@@ -80,11 +80,6 @@ class DailyLearningViewModel(
                     isPremium = isPremium
                 )
             }
-
-            // Auto-pronounce first word if available and auto-read is enabled
-            if (sessionWords.isNotEmpty() && (settingsPreferences?.isAutoReadEnabled() != false)) {
-                ttsManager?.speak(sessionWords[0].word)
-            }
         }
     }
 
@@ -113,10 +108,6 @@ class DailyLearningViewModel(
                     isCardFlipped = false
                 )
             }
-            // Auto-pronounce next word if auto-read is enabled
-            if (settingsPreferences?.isAutoReadEnabled() != false) {
-                ttsManager?.speak(state.words[nextIndex].word)
-            }
         } else {
             // Completed all cards for today
             viewModelScope.launch(Dispatchers.IO) {
@@ -141,7 +132,6 @@ class DailyLearningViewModel(
                     isCardFlipped = false
                 )
             }
-            ttsManager?.speak(state.words[prevIndex].word)
         }
     }
 

@@ -47,11 +47,13 @@ interface OnboardingPreferences {
  * SharedPreferences implementation for Android.
  */
 class SharedPreferencesOnboardingPreferences(
-    private val prefs: SharedPreferences
+    private val prefs: SharedPreferences,
+    private val onboardingPrefs: SharedPreferences = prefs
 ) : OnboardingPreferences {
 
     companion object {
         const val PREFS_NAME = "englishcoach_preferences"
+        const val ONBOARDING_PREFS_NAME = "englishcoach_onboarding_preferences"
 
         const val KEY_ONBOARDING_COMPLETED = "hasCompletedPersonalizedOnboarding"
         const val KEY_NOTIFICATION_ONBOARDING_COMPLETED = "hasCompletedNotificationOnboarding"
@@ -68,20 +70,42 @@ class SharedPreferencesOnboardingPreferences(
         const val DEFAULT_REMINDER_MINUTE = 0
 
         fun create(context: Context): SharedPreferencesOnboardingPreferences {
-            val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            return SharedPreferencesOnboardingPreferences(sharedPrefs)
+            val generalPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val onboardingPrefs = context.getSharedPreferences(ONBOARDING_PREFS_NAME, Context.MODE_PRIVATE)
+            return SharedPreferencesOnboardingPreferences(
+                prefs = generalPrefs,
+                onboardingPrefs = onboardingPrefs
+            )
+        }
+    }
+
+    init {
+        // Strip legacy onboarding completion flags from generalPrefs if present (e.g. from older builds or cloud restore),
+        // guaranteeing that generalPrefs backup will never carry completion state.
+        if (prefs !== onboardingPrefs && (prefs.contains(KEY_ONBOARDING_COMPLETED) || prefs.contains(KEY_NOTIFICATION_ONBOARDING_COMPLETED))) {
+            prefs.edit()
+                .remove(KEY_ONBOARDING_COMPLETED)
+                .remove(KEY_NOTIFICATION_ONBOARDING_COMPLETED)
+                .apply()
         }
     }
 
     override fun isOnboardingCompleted(): Boolean {
-        return prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+        return onboardingPrefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
     }
 
     override fun setOnboardingCompleted(completed: Boolean) {
-        prefs.edit()
+        onboardingPrefs.edit()
             .putBoolean(KEY_ONBOARDING_COMPLETED, completed)
             .putBoolean(KEY_NOTIFICATION_ONBOARDING_COMPLETED, completed)
             .apply()
+
+        if (prefs !== onboardingPrefs && (prefs.contains(KEY_ONBOARDING_COMPLETED) || prefs.contains(KEY_NOTIFICATION_ONBOARDING_COMPLETED))) {
+            prefs.edit()
+                .remove(KEY_ONBOARDING_COMPLETED)
+                .remove(KEY_NOTIFICATION_ONBOARDING_COMPLETED)
+                .apply()
+        }
     }
 
     override fun isReminderEnabled(): Boolean {

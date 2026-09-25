@@ -286,25 +286,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = EnglishCoachSpacing.sm, vertical = EnglishCoachSpacing.xxs)
             )
 
-            // Section 3: 語音與音訊 (Audio / TTS)
-            SettingsSectionHeader(title = "語音與音訊")
-            Card(
-                shape = EnglishCoachShapes.card,
-                colors = CardDefaults.cardColors(containerColor = EnglishCoachColors.Surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, EnglishCoachColors.CardBorder),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                SettingsSwitchRow(
-                    icon = EnglishCoachIcons.Volume,
-                    iconTint = EnglishCoachColors.Purple,
-                    title = "自動朗讀單字",
-                    subtitle = "進入卡片時自動發音，加強聽力與口說記憶",
-                    checked = state.autoReadEnabled,
-                    onCheckedChange = { viewModel.setAutoReadEnabled(it) }
-                )
-            }
-
-            // Section 4: 互動與支持 (Interaction & Support)
+            // Section 3: 互動與支持 (Interaction & Support)
             SettingsSectionHeader(title = "互動與支持")
             Card(
                 shape = EnglishCoachShapes.card,
@@ -329,7 +311,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 5: 社群 (Social)
+            // Section 4: 社群 (Social)
             SettingsSectionHeader(title = "社群")
             Card(
                 shape = EnglishCoachShapes.card,
@@ -354,7 +336,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 6: 關於 (About)
+            // Section 5: 關於 (About)
             SettingsSectionHeader(title = "關於")
             Card(
                 shape = EnglishCoachShapes.card,

@@ -67,7 +67,6 @@ class SettingsViewModel(
             it.copy(
                 displayName = settingsPreferences.getDisplayName(),
                 avatarEmoji = settingsPreferences.getAvatarEmoji(),
-                autoReadEnabled = settingsPreferences.isAutoReadEnabled(),
                 hapticFeedbackEnabled = settingsPreferences.isHapticFeedbackEnabled(),
                 targetLevel = userLevel,
                 todayCompletedCount = practiceCount,
@@ -117,11 +116,6 @@ class SettingsViewModel(
         }
         settingsPreferences.setAvatarEmoji(emoji)
         refresh()
-    }
-
-    fun setAutoReadEnabled(enabled: Boolean) {
-        settingsPreferences.setAutoReadEnabled(enabled)
-        _uiState.update { it.copy(autoReadEnabled = enabled) }
     }
 
     fun setHapticFeedbackEnabled(enabled: Boolean) {

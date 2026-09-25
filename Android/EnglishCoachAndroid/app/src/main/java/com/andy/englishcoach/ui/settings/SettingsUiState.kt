@@ -11,7 +11,6 @@ import com.andy.englishcoach.data.preference.SharedPreferencesSettingsPreference
 data class SettingsUiState(
     val displayName: String = SharedPreferencesSettingsPreferences.DEFAULT_DISPLAY_NAME,
     val avatarEmoji: String = SharedPreferencesSettingsPreferences.DEFAULT_AVATAR_EMOJI,
-    val autoReadEnabled: Boolean = SharedPreferencesSettingsPreferences.DEFAULT_AUTO_READ_TTS,
     val hapticFeedbackEnabled: Boolean = SharedPreferencesSettingsPreferences.DEFAULT_HAPTIC_FEEDBACK,
     val targetLevel: ToeicTarget = ToeicTarget.BASIC,
     val todayCompletedCount: Int = 0,
