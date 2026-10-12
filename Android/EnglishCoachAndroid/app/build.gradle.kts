@@ -28,7 +28,7 @@ android {
         applicationId = "com.andy.englishcoach"
         minSdk = 24
         targetSdk = 37
-        versionCode = 7
+        versionCode = 9
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -50,11 +50,14 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
-            }
-            optimization {
-                enable = false
             }
         }
     }
@@ -88,6 +91,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.fragment)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
     // Google Play Billing
