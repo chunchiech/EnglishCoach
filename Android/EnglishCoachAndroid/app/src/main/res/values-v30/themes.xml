@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.EnglishCoachAndroid" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Android 11+ display cutout: always render edge-to-edge -->
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+    </style>
+</resources>

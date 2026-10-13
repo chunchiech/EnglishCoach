@@ -112,7 +112,7 @@ fun ReviewCenterScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = EnglishCoachColors.Background
                 )
             )
